@@ -3,22 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>錯題重練小工具｜多張拍照與批次錯題記憶</title>
+  <title>錯題重練小工具｜拍錯題直接作答與錯題本記憶</title>
   <style>
-    /* ====== 樣式調整區（顏色、圓角、卡片、按鈕都在這裡改） ====== */
+    /* =========================================================
+       樣式區（等下要改顏色、圓角、按鈕、卡片間距，直接改這裡）
+       ========================================================= */
     :root {
-      --bg: #f6f8fb;
+      --bg: #f4f7fb;
       --card: #ffffff;
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
+      --primary-soft: #eff6ff;
       --danger: #dc2626;
-      --danger-bg: #fef2f2;
+      --danger-soft: #fef2f2;
+      --danger-border: #fecaca;
       --success: #16a34a;
-      --success-bg: #f0fdf4;
-      --text: #1e293b;
+      --success-soft: #f0fdf4;
+      --success-border: #bbf7d0;
+      --text: #0f172a;
       --muted: #64748b;
       --border: #e2e8f0;
-      --radius: 16px;
+      --radius: 18px;
+      --shadow: 0 6px 24px rgba(15, 23, 42, 0.05);
     }
 
     * {
@@ -28,10 +34,10 @@
     body {
       margin: 0;
       padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .app {
@@ -39,7 +45,7 @@
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .card {
@@ -47,20 +53,32 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 18px;
-      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      box-shadow: var(--shadow);
     }
 
     .header-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
       flex-wrap: wrap;
     }
 
+    .brand-tag {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
     h1 {
       margin: 0;
-      font-size: 1.35rem;
+      font-size: 1.38rem;
+      letter-spacing: -0.01em;
     }
 
     .subtitle {
@@ -73,17 +91,21 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-top: 14px;
+      margin-top: 16px;
     }
 
     button {
       border: none;
       border-radius: 12px;
       padding: 12px 16px;
-      font-size: 1rem;
-      font-weight: 600;
+      font-size: 0.98rem;
+      font-weight: 700;
       cursor: pointer;
-      transition: 0.15s ease;
+      transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
     }
 
     .btn-primary {
@@ -111,9 +133,9 @@
     }
 
     .btn-danger-soft {
-      background: var(--danger-bg);
+      background: var(--danger-soft);
       color: var(--danger);
-      border: 1px solid #fecaca;
+      border: 1px solid var(--danger-border);
     }
 
     .field-group {
@@ -122,9 +144,9 @@
 
     label {
       display: block;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 6px;
-      font-size: 0.95rem;
+      font-size: 0.94rem;
     }
 
     select,
@@ -132,32 +154,40 @@
     input[type="number"],
     textarea {
       width: 100%;
-      padding: 11px 12px;
+      padding: 11px 13px;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 1rem;
       font-family: inherit;
       background: #fff;
+      color: var(--text);
+    }
+
+    select:focus,
+    input:focus,
+    textarea:focus {
+      outline: 2px solid rgba(37, 99, 235, 0.22);
+      border-color: var(--primary);
     }
 
     textarea {
-      min-height: 76px;
+      min-height: 74px;
       resize: vertical;
     }
 
     .row-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 12px;
     }
 
     .row-3 {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 1fr 1fr 1.4fr;
+      gap: 12px;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 620px) {
       .row-2,
       .row-3 {
         grid-template-columns: 1fr;
@@ -167,34 +197,33 @@
     .photo-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 8px;
     }
 
     .photo-tip {
       margin-top: 6px;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       color: var(--muted);
       word-break: break-all;
     }
 
     .photo-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
       gap: 10px;
       margin-top: 10px;
     }
 
     .photo-thumb-card {
-      position: relative;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 6px;
       background: #f8fafc;
     }
 
     .photo-thumb-card img {
       width: 100%;
-      height: 110px;
+      height: 112px;
       object-fit: cover;
       border-radius: 8px;
       display: block;
@@ -203,12 +232,12 @@
     .remove-photo-btn {
       margin-top: 6px;
       width: 100%;
-      padding: 5px 8px;
+      padding: 6px 8px;
       font-size: 0.82rem;
       border-radius: 8px;
-      background: var(--danger-bg);
+      background: var(--danger-soft);
       color: var(--danger);
-      border: 1px solid #fecaca;
+      border: 1px solid var(--danger-border);
     }
 
     .choices {
@@ -219,55 +248,60 @@
     }
 
     .choice-btn {
-      padding: 12px 8px;
+      padding: 11px 8px;
       border: 2px solid var(--border);
       background: #fff;
       color: var(--text);
       border-radius: 10px;
-      font-size: 1rem;
+      font-size: 0.96rem;
+    }
+
+    .choice-btn:hover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
     }
 
     .feedback {
       margin-top: 14px;
-      padding: 14px;
+      padding: 14px 16px;
       border-radius: 12px;
       display: none;
     }
 
     .feedback.wrong {
       display: block;
-      background: var(--danger-bg);
-      border: 1px solid #fecaca;
+      background: var(--danger-soft);
+      border: 1px solid var(--danger-border);
       color: #991b1b;
     }
 
     .feedback.right {
       display: block;
-      background: var(--success-bg);
-      border: 1px solid #bbf7d0;
+      background: var(--success-soft);
+      border: 1px solid var(--success-border);
       color: #166534;
     }
 
     .mistake-item {
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       margin-top: 12px;
       background: #fff;
     }
 
     .mistake-meta {
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       color: var(--muted);
       margin-bottom: 6px;
     }
 
     .badge {
       display: inline-block;
-      padding: 2px 8px;
+      padding: 2px 9px;
       border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 600;
+      font-size: 0.78rem;
+      font-weight: 700;
       background: #fee2e2;
       color: #b91c1c;
       margin-right: 6px;
@@ -289,21 +323,28 @@
       display: none;
     }
 
+    .cta-box {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+      border: 1px solid #dbeafe;
+    }
+
     .footer-note {
-      font-size: 0.9rem;
-      color: var(--muted);
+      font-size: 0.92rem;
+      color: var(--text);
     }
   </style>
 </head>
 <body>
   <div class="app">
+    <!-- 頂部主控列 -->
     <div class="card">
       <div class="header-top">
         <div>
-          <h1>錯題重練小工具</h1>
-          <p class="subtitle">支援一次多張照片、一次批次新增多題，考前只練錯題</p>
+          <span class="brand-tag">錯題重練小工具</span>
+          <h1>拍錯題直接作答＋錯題本記憶</h1>
+          <p class="subtitle">拍完照直接填答案批改，做錯自動進錯題本，考前只練還沒熟的題目</p>
         </div>
-        <select id="versionSelect" style="width: auto; min-width: 145px;">
+        <select id="versionSelect" style="width: auto; min-width: 140px;">
           <option value="康軒">康軒版</option>
           <option value="翰林">翰林版</option>
           <option value="南一">南一版</option>
@@ -313,56 +354,58 @@
 
       <div class="mode-tabs">
         <button id="tabPractice" class="btn-secondary active" onclick="switchTab('practice')">
-          拍錯題作答（可批次）
+          拍錯題作答
         </button>
         <button id="tabReview" class="btn-secondary" onclick="switchTab('review')">
-          錯題複習本 (<span id="wrongCount">0</span>)
+          錯題本 (<span id="wrongCount">0</span>)
         </button>
       </div>
     </div>
 
+    <!-- 模式一：拍錯題直接作答 -->
     <div id="practiceSection" class="card">
       <div class="row-3">
         <div class="field-group">
-          <label for="subjectSelect">科目</label>
+          <label for="subjectSelect">1. 選科目</label>
           <select id="subjectSelect">
-            <option value="國語">國語</option>
             <option value="數學">數學</option>
+            <option value="國語">國語</option>
             <option value="自然">自然</option>
             <option value="社會">社會</option>
+            <option value="英文">英文</option>
           </select>
         </div>
 
         <div class="field-group">
-          <label for="batchCount">這批要記幾題（1～20）</label>
-          <input id="batchCount" type="number" min="1" max="20" value="3" />
+          <label for="batchCount">2. 這次記幾題</label>
+          <input id="batchCount" type="number" min="1" max="20" value="1" />
         </div>
 
         <div class="field-group">
-          <label>題目照片（可選多張或連拍）</label>
+          <label>3. 拍／選題目照片</label>
           <div class="photo-actions">
-            <button type="button" class="btn-primary" onclick="triggerGalleryPick()">
-              選多張相簿
+            <button type="button" class="btn-primary" onclick="triggerCameraCapture()">
+              直接拍照
             </button>
-            <button type="button" class="btn-secondary" onclick="triggerCameraCapture()">
-              拍照加入
+            <button type="button" class="btn-secondary" onclick="triggerGalleryPick()">
+              選相簿多張
             </button>
           </div>
-          <div id="photoFileName" class="photo-tip">尚未加入照片（可連續拍多張或一次選多張）</div>
+          <div id="photoFileName" class="photo-tip">尚未加入照片（可拍多張或從相簿挑多張）</div>
 
-          <input
-            id="galleryInput"
-            type="file"
-            accept="image/*"
-            multiple
-            class="hidden"
-            onchange="handlePhotoChange(event)"
-          />
           <input
             id="cameraInput"
             type="file"
             accept="image/*"
             capture="environment"
+            class="hidden"
+            onchange="handlePhotoChange(event)"
+          />
+          <input
+            id="galleryInput"
+            type="file"
+            accept="image/*"
+            multiple
             class="hidden"
             onchange="handlePhotoChange(event)"
           />
@@ -372,46 +415,50 @@
       <div id="photoGrid" class="photo-grid"></div>
 
       <div class="field-group" style="margin-top: 12px;">
-        <label for="questionText">題號／題目重點（可一行一題，也可留白自動編號）</label>
-        <textarea id="questionText" placeholder="例如：&#10;第2題：形近字辨析&#10;第5題：分數應用題&#10;（若留白，會依上方「這批要記幾題」自動建立第 1～N 題並共用照片）"></textarea>
+        <label for="questionText">題號或簡記（可留白，系統會自動編號）</label>
+        <textarea
+          id="questionText"
+          placeholder="可留白自動編第 1 題、第 2 題... 或一行一題寫題號／重點"
+        ></textarea>
       </div>
 
       <div class="field-group">
-        <label>快速填入作答（點 A/B/C/D 會附加到作答框，也可用逗號／空白一次填多題，如：A, C, B）</label>
+        <label>作答內容（可點 A/B/C/D 快速填入，多題用逗號隔開，如：A, C）</label>
         <div class="choices">
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'A')">+ A</button>
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'B')">+ B</button>
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'C')">+ C</button>
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'D')">+ D</button>
         </div>
-        <input id="userAnswer" type="text" style="margin-top: 10px;" placeholder="作答內容（多題可用逗號分隔，例如：A, B, D）" />
+        <input id="userAnswer" type="text" style="margin-top: 10px;" placeholder="輸入作答（例如：B 或 A, C, D）" />
       </div>
 
       <div class="row-2">
         <div class="field-group">
-          <label for="correctAnswer">正確答案（多題可用逗號分隔，例如：C, B, A）</label>
-          <input id="correctAnswer" type="text" placeholder="例如：C, B, A（可留白直接當錯題存檔）" />
+          <label for="correctAnswer">正確答案（留白可直接當錯題存檔）</label>
+          <input id="correctAnswer" type="text" placeholder="例如：C 或 C, B, D" />
         </div>
         <div class="field-group">
-          <label for="parentNote">家長解析／錯因提醒</label>
-          <input id="parentNote" type="text" placeholder="例如：這幾題都是題意沒看清楚，先圈出關鍵字" />
+          <label for="parentNote">錯因提醒／解析備註</label>
+          <input id="parentNote" type="text" placeholder="例如：單位沒換算、看錯題目條件" />
         </div>
       </div>
 
       <div class="action-bar">
-        <button class="btn-primary" onclick="submitBatchAnswer()">批次批改（答錯自動存錯題）</button>
-        <button class="btn-danger-soft" onclick="saveBatchMistakesDirect()">整批直接存進錯題本</button>
+        <button class="btn-primary" onclick="submitBatchAnswer()">送出作答（答錯自動存錯題本）</button>
+        <button class="btn-danger-soft" onclick="saveBatchMistakesDirect()">直接存進錯題本</button>
         <button class="btn-secondary" onclick="clearForm()">清空重填</button>
       </div>
 
       <div id="feedbackBox" class="feedback"></div>
     </div>
 
+    <!-- 模式二：錯題本記憶與重練 -->
     <div id="reviewSection" class="card hidden">
       <div class="header-top">
         <div>
-          <h2 style="margin: 0; font-size: 1.15rem;">待複習錯題清單</h2>
-          <p class="subtitle">只挑做錯或還沒練熟的題目重練，答對可移出待複習</p>
+          <h2 style="margin: 0; font-size: 1.15rem;">錯題本記憶清單</h2>
+          <p class="subtitle">只練還沒熟的題目，答對可移出待複習</p>
         </div>
         <div class="action-bar" style="margin-top: 0;">
           <button id="filterPendingBtn" class="btn-secondary active" onclick="setReviewFilter('pending')">
@@ -420,22 +467,23 @@
           <button id="filterAllBtn" class="btn-secondary" onclick="setReviewFilter('all')">
             全部紀錄
           </button>
-          <button class="btn-danger-soft" onclick="clearAllMistakes()">清空全部</button>
+          <button class="btn-danger-soft" onclick="clearAllMistakes()">清空紀錄</button>
         </div>
       </div>
 
       <div id="mistakeList"></div>
     </div>
 
-    <div class="card">
+    <!-- 流量承接區（敲碗／方案引導，方便你改成自己的連結或文案） -->
+    <div class="card cta-box">
       <p class="footer-note" style="margin: 0 0 10px;">
-        <strong>敲碗許願／進階協助：</strong>還缺哪個年級、科目或課本版本？或是想找每週固定幫整理重練卷與家長解析？
+        <strong>想要更多年級／版本，或每週有人幫整理錯題重練？</strong>
       </p>
       <div class="action-bar" style="margin-top: 0;">
-        <button class="btn-secondary" onclick="alert('歡迎把想要的年級、科目或課本版本留言告訴我，優先排入下一版！')">
+        <button class="btn-secondary" onclick="alert('歡迎留言告訴我們想加哪個年級、科目或課本版本！')">
           敲碗許願缺的版本
         </button>
-        <button class="btn-success" onclick="alert('想找每週幫整理錯題重練卷＋家長解析，歡迎直接私訊或聯繫洽詢方案！')">
+        <button class="btn-success" onclick="alert('想了解每週整理錯題重練＋解析方案，歡迎聯繫洽詢！')">
           了解每週代整理方案
         </button>
       </div>
@@ -443,7 +491,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'wrong_note_items_v3';
+    const STORAGE_KEY = 'wrong_note_flow_v1';
     let currentPhotos = [];
     let reviewFilter = 'pending';
 
@@ -460,8 +508,8 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
         renderMistakes();
         return true;
-      } catch (err) {
-        alert('本機儲存空間已滿（可能是照片太多），請先刪除部分舊錯題或清空紀錄再存新照片。');
+      } catch {
+        alert('瀏覽器本機儲存空間已滿，建議先刪除部分舊錯題或清空紀錄。');
         return false;
       }
     }
@@ -482,14 +530,14 @@
       renderMistakes();
     }
 
-    function triggerGalleryPick() {
-      const input = document.getElementById('galleryInput');
+    function triggerCameraCapture() {
+      const input = document.getElementById('cameraInput');
       input.value = '';
       input.click();
     }
 
-    function triggerCameraCapture() {
-      const input = document.getElementById('cameraInput');
+    function triggerGalleryPick() {
+      const input = document.getElementById('galleryInput');
       input.value = '';
       input.click();
     }
@@ -526,7 +574,7 @@
       const tipEl = document.getElementById('photoFileName');
       if (files.length === 0) return;
 
-      tipEl.textContent = `正在處理 ${files.length} 張照片...`;
+      tipEl.textContent = `處理照片中（共 ${files.length} 張）...`;
       let added = 0;
 
       for (const file of files) {
@@ -538,15 +586,15 @@
           });
           added += 1;
         } catch {
-          // 單張失敗不中斷其餘照片
+          // 單張失敗不中斷其他照片
         }
       }
 
       renderPhotoGrid();
       tipEl.textContent =
         added > 0
-          ? `目前共有 ${currentPhotos.length} 張照片（可繼續加拍或加選）`
-          : '照片載入失敗，請改用「選多張相簿」或用 Safari／Chrome 開啟網頁再試一次。';
+          ? `已加入 ${currentPhotos.length} 張照片（可繼續拍或選圖）`
+          : '照片載入失敗，請改用「選相簿多張」或用瀏覽器開啟再試一次。';
     }
 
     function removePhoto(index) {
@@ -554,8 +602,8 @@
       renderPhotoGrid();
       document.getElementById('photoFileName').textContent =
         currentPhotos.length > 0
-          ? `目前共有 ${currentPhotos.length} 張照片`
-          : '尚未加入照片（可連續拍多張或一次選多張）';
+          ? `已加入 ${currentPhotos.length} 張照片`
+          : '尚未加入照片（可拍多張或從相簿挑多張）';
     }
 
     function renderPhotoGrid() {
@@ -599,7 +647,10 @@
         .filter(Boolean);
       const userList = parseList(document.getElementById('userAnswer').value);
       const correctList = parseList(document.getElementById('correctAnswer').value);
-      const countInput = Math.max(1, Math.min(20, parseInt(document.getElementById('batchCount').value, 10) || 1));
+      const countInput = Math.max(
+        1,
+        Math.min(20, parseInt(document.getElementById('batchCount').value, 10) || 1)
+      );
 
       const total = Math.max(countInput, rawLines.length, userList.length, correctList.length);
       const photoUrls = currentPhotos.map((p) => p.data);
@@ -610,7 +661,7 @@
         const qTitle =
           rawLines[i] ||
           (photoUrls.length > 0
-            ? `第 ${i + 1} 題（對照第 ${Math.min(i + 1, photoUrls.length)} 張照片作答）`
+            ? `第 ${i + 1} 題（對照第 ${Math.min(i + 1, photoUrls.length)} 張照片）`
             : `第 ${i + 1} 題`);
 
         batch.push({
@@ -644,7 +695,7 @@
           question: entry.question,
           userAnswer: entry.userAnswer,
           correctAnswer: entry.correctAnswer,
-          parentNote: parentNote || '請對照題目條件與課本觀念再檢查一次。',
+          parentNote: parentNote || '對照題目條件與課本觀念再檢查一次。',
           photo: entry.photo || '',
           wrongCount: 1,
           lastWrongAt: new Date().toLocaleString('zh-TW'),
@@ -662,7 +713,7 @@
 
       if (currentPhotos.length === 0 && !document.getElementById('questionText').value.trim()) {
         feedback.className = 'feedback wrong';
-        feedback.innerHTML = '請先加入照片或輸入題目內容再進行批次批改。';
+        feedback.innerHTML = '請先拍／選照片，或輸入題號／作答內容再送出。';
         return;
       }
 
@@ -675,7 +726,7 @@
         if (!entry.correctAnswer) {
           upsertMistakeItem(items, version, subject, parentNote, entry);
           wrongCountBatch += 1;
-          detailLines.push(`• ${escapeHtml(entry.question)}：未填正答，已收入錯題本`);
+          detailLines.push(`• ${escapeHtml(entry.question)}：未填正答，已收進錯題本`);
           continue;
         }
 
@@ -687,7 +738,7 @@
           upsertMistakeItem(items, version, subject, parentNote, entry);
           wrongCountBatch += 1;
           detailLines.push(
-            `• ${escapeHtml(entry.question)}：作答「${escapeHtml(entry.userAnswer || '未填')}」／正答「<strong>${escapeHtml(entry.correctAnswer)}</strong>」→ 已存錯題本`
+            `• ${escapeHtml(entry.question)}：作答「${escapeHtml(entry.userAnswer || '未填')}」／正答「<strong>${escapeHtml(entry.correctAnswer)}</strong>」→ 已收進錯題本`
           );
         }
       }
@@ -696,8 +747,8 @@
 
       feedback.className = wrongCountBatch > 0 ? 'feedback wrong' : 'feedback right';
       feedback.innerHTML = `
-        <strong>批次批改完成！共 ${batch.length} 題：答對 ${rightCount} 題、列入錯題 ${wrongCountBatch} 題。</strong><br>
-        ${parentNote ? `家長提醒：${escapeHtml(parentNote)}<br>` : ''}
+        <strong>完成！共 ${batch.length} 題：答對 ${rightCount} 題、收進錯題本 ${wrongCountBatch} 題。</strong><br>
+        ${parentNote ? `備註：${escapeHtml(parentNote)}<br>` : ''}
         <div style="margin-top: 8px; font-size: 0.92rem;">${detailLines.join('<br>')}</div>
       `;
     }
@@ -711,7 +762,7 @@
 
       if (currentPhotos.length === 0 && !document.getElementById('questionText').value.trim()) {
         feedback.className = 'feedback wrong';
-        feedback.innerHTML = '請先加入照片或輸入題目內容再存進錯題本。';
+        feedback.innerHTML = '請先拍／選照片，或輸入題號／作答內容再存進錯題本。';
         return;
       }
 
@@ -723,7 +774,7 @@
       if (!saveMistakes(items)) return;
 
       feedback.className = 'feedback wrong';
-      feedback.innerHTML = `<strong>已一次將 ${batch.length} 題存進錯題複習本！</strong> 隨時可切到「錯題複習本」逐題重練。`;
+      feedback.innerHTML = `<strong>已將 ${batch.length} 題直接存進錯題本！</strong> 切到上方「錯題本」即可重練。`;
     }
 
     function markMastered(id) {
@@ -748,9 +799,9 @@
       document.getElementById('userAnswer').value = '';
       document.getElementById('correctAnswer').value = '';
       document.getElementById('parentNote').value = '';
-      document.getElementById('galleryInput').value = '';
       document.getElementById('cameraInput').value = '';
-      document.getElementById('photoFileName').textContent = '尚未加入照片（可連續拍多張或一次選多張）';
+      document.getElementById('galleryInput').value = '';
+      document.getElementById('photoFileName').textContent = '尚未加入照片（可拍多張或從相簿挑多張）';
       document.getElementById('feedbackBox').className = 'feedback';
       currentPhotos = [];
       renderPhotoGrid();
@@ -769,8 +820,8 @@
       if (visibleItems.length === 0) {
         listEl.innerHTML =
           reviewFilter === 'pending'
-            ? '<p class="subtitle" style="margin-top: 14px;">目前沒有待複習錯題！可以切到「全部紀錄」查看已掌握題目，或去「拍錯題作答」新增。</p>'
-            : '<p class="subtitle" style="margin-top: 14px;">目前還沒有錯題紀錄，去「拍錯題作答」批次新增吧！</p>';
+            ? '<p class="subtitle" style="margin-top: 14px;">目前沒有待複習錯題！可以切到「全部紀錄」查看已掌握題目，或回「拍錯題作答」新增。</p>'
+            : '<p class="subtitle" style="margin-top: 14px;">目前還沒有錯題紀錄，去「拍錯題作答」新增第一批吧！</p>';
         return;
       }
 
@@ -782,16 +833,16 @@
               <span class="badge ${item.mastered ? 'ok' : ''}">
                 ${item.mastered ? '已掌握' : `錯 ${item.wrongCount} 次`}
               </span>
-              ${escapeHtml(item.version)}・${escapeHtml(item.subject)}・上次紀錄：${escapeHtml(item.lastWrongAt)}
+              ${escapeHtml(item.version)}・${escapeHtml(item.subject)}・${escapeHtml(item.lastWrongAt)}
             </div>
-            <div style="font-weight: 600; margin-bottom: 6px;">${escapeHtml(item.question)}</div>
+            <div style="font-weight: 700; margin-bottom: 6px;">${escapeHtml(item.question)}</div>
             ${
               item.photo
-                ? `<img src="${item.photo}" alt="錯題照片" style="max-height: 180px; border-radius: 8px; margin-bottom: 8px; display: block;" />`
+                ? `<img src="${item.photo}" alt="錯題照片" style="max-height: 180px; border-radius: 10px; margin-bottom: 8px; display: block;" />`
                 : ''
             }
             <div style="font-size: 0.92rem; color: #334155;">
-              作答：${escapeHtml(item.userAnswer || '未填')}｜正答：<strong>${escapeHtml(item.correctAnswer || '待補充')}</strong>｜家長解析：${escapeHtml(item.parentNote)}
+              作答：${escapeHtml(item.userAnswer || '未填')}｜正答：<strong>${escapeHtml(item.correctAnswer || '待補充')}</strong>｜備註：${escapeHtml(item.parentNote)}
             </div>
             <div class="action-bar">
               <button class="btn-success" onclick="markMastered(${item.id})">
