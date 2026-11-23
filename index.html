@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>錯題重練小工具｜拍照作答與錯題記憶複習</title>
+  <!-- 載入 Tailwind CSS 與 Inter / 繁體友善字體 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* 確保觸控操作順手、字體清晰，並避免不必要的水平捲動 */
+    html, body {
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .touch-btn {
+      min-height: 48px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-800">
+  <!-- 最外層容器：行動裝置友善寬度與充足留白 -->
+  <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 gap-5">
+
+    <!-- 1. 頂部標題與兩大模式切換列 -->
+    <header class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-bold mb-2">
+            <span>免下載・可加入主畫面</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            錯題重練小工具
+          </h1>
+          <p class="text-sm sm:text-base text-slate-600 mt-1">
+            拍錯題、手機／平板直接作答，把做錯的記下來，考前只練錯的題目！
+          </p>
+        </div>
+        <button
+          type="button"
+          id="btn-home-guide"
+          class="touch-btn self-start sm:self-center px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition shrink-0"
+        >
+          如何加入主畫面？
+        </button>
+      </div>
+
+      <!-- 科目 / 版本快速標籤列（支援篩選與快速標記預設科目/版本） -->
+      <div class="pt-2 border-t border-slate-100">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="text-xs sm:text-sm font-bold text-slate-500">
+            科目／版本快速標籤（點選可篩選複習本或套用目前出題標籤）：
+          </span>
+          <span id="active-tag-badge" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
+            目前標籤：全部
+          </span>
+        </div>
+        <div id="tag-filter-bar" class="flex flex-wrap gap-2">
+          <!-- 由 JS 動態產生標籤按鈕 -->
+        </div>
+      </div>
+
+      <!-- 兩大核心模式切換按鈕 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        <button
+          type="button"
+          id="tab-practice"
+          class="touch-btn w-full py-3.5 px-4 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition shadow-sm bg-indigo-600 text-white"
+        >
+          <span>＋ 拍錯題作答</span>
+        </button>
+        <button
+          type="button"
+          id="tab-review"
+          class="touch-btn w-full py-3.5 px-4 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition border bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+        >
+          <span>錯題複習本</span>
+          <span
+            id="review-due-badge"
+            class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-sm font-extrabold bg-rose-500 text-white"
+          >
+            0
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 系統訊息提示條（取代 alert/confirm） -->
+    <div
+      id="toast-banner"
+      class="hidden rounded-2xl px-4 py-3 text-sm sm:text-base font-semibold shadow-sm border transition-all"
+      role="status"
+      aria-live="polite"
+    ></div>
+
+    <!-- =========================================================
+         2. 「拍錯題作答」區塊
+    ========================================================= -->
+    <main id="section-practice" class="space-y-5">
+      <!-- 拍照 / 選照片 與 範例題目快速帶入 -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">
+              第一步：拍錯題照片 或 挑範例題目
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+              手機或平板可直接開相機拍照，也能直接點選下方範例錯題快速試玩。
+            </p>
+          </div>
+
+          <!-- 拍照 / 選相簿按鈕 -->
+          <label
+            for="camera-input"
+            class="touch-btn cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-sm sm:text-base shadow-sm transition shrink-0"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span>拍照／選照片</span>
+          </label>
+          <input
+            id="camera-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            class="hidden"
+          />
+        </div>
+
+        <!-- 範例錯題快速套用區 -->
+        <div class="bg-slate-50 rounded-xl p-3 sm:p-4 border border-slate-200/70 space-y-2">
+          <div class="text-xs sm:text-sm font-bold text-slate-600">
+            快速套用範例錯題（點一下直接帶入作答）：
+          </div>
+          <div id="sample-presets" class="flex flex-wrap gap-2">
+            <!-- 由 JS 動態產生範例題目按鈕 -->
+          </div>
+        </div>
+
+        <!-- 照片預覽區 -->
+        <div id="photo-preview-box" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-700">錯題照片預覽</span>
+            <button
+              type="button"
+              id="btn-clear-photo"
+              class="text-xs sm:text-sm font-semibold text-rose-600 hover:text-rose-700 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition"
+            >
+              移除照片
+            </button>
+          </div>
+          <img
+            id="photo-preview-img"
+            src=""
+            alt="拍攝或選取的錯題照片預覽"
+            class="w-full max-h-72 object-contain rounded-xl bg-white border border-slate-200"
+          />
+        </div>
+      </section>
+
+      <!-- 題目設定與孩子作答區 -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900">
+            第二步：題目內容與孩子直接作答
+          </h2>
+          <button
+            type="button"
+            id="btn-toggle-editor"
+            class="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition self-start sm:self-auto"
+          >
+            收合／展開出題設定
+          </button>
+        </div>
+
+        <!-- 題目與答案設定欄位（可展開或收合，方便孩子直接作答） -->
+        <div id="question-setup-panel" class="space-y-4 bg-indigo-50/40 rounded-2xl p-3.5 sm:p-4 border border-indigo-100">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label for="input-subject" class="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
+                科目
+              </label>
+              <select
+                id="input-subject"
+                class="touch-btn w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="國語">國語</option>
+                <option value="數學">數學</option>
+                <option value="生活">生活</option>
+                <option value="自然">自然</option>
+                <option value="社會">社會</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="input-version" class="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
+                課本版本
+              </label>
+              <select
+                id="input-version"
+                class="touch-btn w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="康軒">康軒</option>
+                <option value="翰林">翰林</option>
+                <option value="南一">南一</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="input-qtype" class="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
+                作答類型
+              </label>
+              <select
+                id="input-qtype"
+                class="touch-btn w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="choice">選擇／是非點選</option>
+                <option value="text">填空／造詞作答輸入</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label for="input-prompt" class="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
+              題目／重練題內容
+            </label>
+            <textarea
+              id="input-prompt"
+              rows="2"
+              placeholder="例如：請選出正確的字：「鄉」字的部首是什麼？（1 阜部、2 邑部、3 示部）"
+              class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            ></textarea>
+          </div>
+
+          <!-- 選擇題選項設定 -->
+          <div id="choice-options-editor" class="space-y-2">
+            <label for="input-options" class="block text-xs sm:text-sm font-bold text-slate-700">
+              選項（用逗號「，」或換行分隔，例如：1 阜部，2 邑部，3 示部）
+            </label>
+            <input
+              id="input-options"
+              type="text"
+              placeholder="1 阜部，2 邑部，3 示部"
+              class="touch-btn w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="input-answer" class="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
+                正確答案
+              </label>
+              <input
+                id="input-answer"
+                type="text"
+                placeholder="例如：2 邑部 或 靜靜"
+                class="touch-btn w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label for="input-explanation" class="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
+                家長錯因與觀念解析
+              </label>
+              <input
+                id="input-explanation"
+                type="text"
+                placeholder="例如：「阝」在右邊屬「邑」部，在左邊才屬「阜」部。"
+                class="touch-btn w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 孩子作答互動區 -->
+        <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <span id="practice-meta-pill" class="text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
+              國語・康軒
+            </span>
+            <span class="text-xs text-slate-500 font-medium">小朋友直接作答</span>
+          </div>
+
+          <div id="practice-question-display" class="text-lg sm:text-xl font-bold text-slate-900 leading-relaxed">
+            請先選擇範例題目或輸入題目內容
+          </div>
+
+          <!-- 動態作答控制區（選項按鈕 或 輸入框） -->
+          <div id="practice-answer-area" class="space-y-3">
+            <!-- 由 JS 依作答類型渲染 -->
+          </div>
+
+          <!-- 作答操作按鈕 -->
+          <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              type="button"
+              id="btn-submit-answer"
+              class="touch-btn flex-1 py-3.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-extrabold text-base sm:text-lg shadow-sm transition"
+            >
+              送出作答／看解析
+            </button>
+            <button
+              type="button"
+              id="btn-save-mistake-direct"
+              class="touch-btn py-3.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-sm sm:text-base border border-amber-300 transition"
+            >
+              直接存進錯題本
+            </button>
+          </div>
+        </div>
+
+        <!-- 作答結果與家長解析回饋卡 -->
+        <div id="feedback-card" class="hidden rounded-2xl p-4 sm:p-5 border-2 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div id="feedback-status" class="text-lg sm:text-xl font-extrabold"></div>
+            <span id="feedback-memory-tag" class="text-xs sm:text-sm font-bold px-3 py-1 rounded-full"></span>
+          </div>
+          <div class="text-sm sm:text-base text-slate-800">
+            <span class="font-bold text-slate-900">正確答案：</span>
+            <span id="feedback-correct-answer" class="font-bold text-indigo-700"></span>
+          </div>
+          <div class="bg-white/80 rounded-xl p-3.5 border border-slate-200/80 text-sm sm:text-base text-slate-700 leading-relaxed">
+            <div class="font-bold text-slate-900 mb-1">家長錯因與觀念解析：</div>
+            <div id="feedback-explanation"></div>
+          </div>
+          <div class="pt-1 flex flex-col sm:flex-row gap-2.5">
+            <button
+              type="button"
+              id="btn-go-review-from-feedback"
+              class="touch-btn px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm sm:text-base transition"
+            >
+              前往錯題複習本 →
+            </button>
+            <button
+              type="button"
+              id="btn-next-sample"
+              class="touch-btn px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-sm sm:text-base border border-slate-300 transition"
+            >
+              換下一題範例練練看
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- =========================================================
+         3. 「錯題複習本」區塊（有記憶功能，專門複習錯題）
+    ========================================================= -->
+    <section id="section-review" class="hidden space-y-5">
+      <!-- 複習本工具列與「開始複習錯題」主按鈕 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+              錯題複習本（記憶庫）
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+              自動記住做錯的題目、錯誤次數與上次作答時間。只練錯的，效率最高！
+            </p>
+          </div>
+
+          <button
+            type="button"
+            id="btn-start-drill"
+            class="touch-btn px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-extrabold text-base shadow-sm transition shrink-0"
+          >
+            開始複習錯題
+          </button>
+        </div>
+
+        <!-- 狀態篩選列（全部 / 待複習 / 已掌握） -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <div class="flex flex-wrap gap-2" id="status-filter-bar">
+            <button
+              type="button"
+              data-status="all"
+              class="status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-900 text-white transition"
+            >
+              全部（<span id="count-all">0</span>）
+            </button>
+            <button
+              type="button"
+              data-status="due"
+              class="status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition"
+            >
+              待複習（<span id="count-due">0</span>）
+            </button>
+            <button
+              type="button"
+              data-status="mastered"
+              class="status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+            >
+              已掌握（<span id="count-mastered">0</span>）
+            </button>
+          </div>
+
+          <button
+            type="button"
+            id="btn-clear-mastered"
+            class="text-xs sm:text-sm font-semibold text-slate-500 hover:text-rose-600 px-3 py-2 rounded-xl hover:bg-rose-50 transition"
+          >
+            清除「已掌握」紀錄
+          </button>
+        </div>
+      </div>
+
+      <!-- 錯題互動重練模式卡片（按下「開始複習錯題」時顯示） -->
+      <div
+        id="drill-session-card"
+        class="hidden bg-gradient-to-br from-rose-50 via-white to-amber-50 rounded-2xl shadow-md border-2 border-rose-200 p-4 sm:p-6 space-y-4"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600 text-white text-xs sm:text-sm font-extrabold">
+            <span>錯題重練進行中</span>
+            <span id="drill-progress-text">1 / 1</span>
+          </span>
+          <button
+            type="button"
+            id="btn-exit-drill"
+            class="text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl bg-white border border-slate-200 transition"
+          >
+            結束重練
+          </button>
+        </div>
+
+        <div id="drill-meta" class="text-xs sm:text-sm font-bold text-rose-700"></div>
+        <div id="drill-prompt" class="text-lg sm:text-xl font-extrabold text-slate-900 leading-relaxed"></div>
+
+        <!-- 重練照片（若有） -->
+        <img
+          id="drill-photo"
+          src=""
+          alt="錯題原圖"
+          class="hidden w-full max-h-56 object-contain rounded-xl border border-slate-200 bg-white"
+        />
+
+        <!-- 重練作答區 -->
+        <div id="drill-answer-area" class="space-y-3"></div>
+
+        <!-- 顯示答案／解析按鈕 -->
+        <div id="drill-reveal-box" class="hidden bg-white rounded-xl p-4 border border-rose-200 space-y-2">
+          <div class="text-sm sm:text-base font-bold text-indigo-700">
+            正確答案：<span id="drill-correct-answer"></span>
+          </div>
+          <div class="text-sm sm:text-base text-slate-700">
+            <span class="font-bold text-slate-900">家長錯因解析：</span>
+            <span id="drill-explanation"></span>
+          </div>
+        </div>
+
+        <!-- 重練結果更新按鈕 -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button
+            type="button"
+            id="btn-drill-check"
+            class="touch-btn flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm sm:text-base transition"
+          >
+            對答案／看解析
+          </button>
+          <button
+            type="button"
+            id="btn-drill-mastered"
+            class="touch-btn flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm sm:text-base transition"
+          >
+            答對了！移出待複習
+          </button>
+          <button
+            type="button"
+            id="btn-drill-still-wrong"
+            class="touch-btn flex-1 py-3 px-4 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-extrabold text-sm sm:text-base transition"
+          >
+            還是錯，繼續留著練
+          </button>
+        </div>
+      </div>
+
+      <!-- 錯題卡片清單 -->
+      <div id="mistake-list" class="space-y-3">
+        <!-- 由 JS 動態渲染錯題卡片 -->
+      </div>
+    </section>
+
+    <!-- =========================================================
+         4. 底部敲碗許願與變現引導區
+    ========================================================= -->
+    <footer class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6 space-y-4 mt-auto">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="space-y-1">
+          <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
+            還缺哪個年級、科目或課本版本？歡迎敲碗許願！
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-600">
+            想找每週固定幫整理錯題重練卷、拿完整整理包，或許願特定版本，都能直接點下方按鈕操作。
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2.5 shrink-0">
+          <button
+            type="button"
+            id="btn-open-wish"
+            class="touch-btn px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 font-extrabold text-sm sm:text-base shadow-sm transition"
+          >
+            敲碗許願缺的年級／版本
+          </button>
+          <button
+            type="button"
+            id="btn-open-plan"
+            class="touch-btn px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm sm:text-base shadow-sm transition"
+          >
+            了解每週整理／付費方案
+          </button>
+        </div>
+      </div>
+
+      <!-- 敲碗許願展開面板 -->
+      <div id="wish-panel" class="hidden pt-4 border-t border-slate-100 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm sm:text-base font-bold text-slate-900">許願敲碗年級／科目／版本</h3>
+          <button type="button" id="btn-close-wish" class="text-xs font-bold text-slate-500 hover:text-slate-800">
+            關閉
+          </button>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2.5">
+          <input
+            id="wish-input"
+            type="text"
+            placeholder="例如：想要康軒三年級數學、或翰林二上國語重練卷..."
+            class="touch-btn flex-1 rounded-xl border border-slate-300 px-3.5 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <button
+            type="button"
+            id="btn-save-wish"
+            class="touch-btn px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm sm:text-base transition"
+          >
+            記下許願並複製留言文字
+          </button>
+        </div>
+        <div id="wish-history-list" class="flex flex-wrap gap-2 text-xs sm:text-sm"></div>
+      </div>
+
+      <!-- 每週整理／付費方案展開面板 -->
+      <div id="plan-panel" class="hidden pt-4 border-t border-slate-100 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm sm:text-base font-bold text-slate-900">每週錯題重練卷＋家長錯因解析服務說明</h3>
+          <button type="button" id="btn-close-plan" class="text-xs font-bold text-slate-500 hover:text-slate-800">
+            關閉
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
+            <div class="font-extrabold text-indigo-700">免費體驗版（目前使用中）</div>
+            <p class="text-slate-600 text-xs sm:text-sm leading-relaxed">
+              手機／平板直接拍題、即時作答、本機自動記住錯題與複習狀態，免下載、免付費。
+            </p>
+          </div>
+          <div class="rounded-xl bg-indigo-50/70 border border-indigo-200 p-3.5 space-y-1">
+            <div class="font-extrabold text-slate-900">每週代整理／客製重練包</div>
+            <p class="text-slate-700 text-xs sm:text-sm leading-relaxed">
+              適合沒時間拍題對解答的家長：每週幫整理錯題重練卷、對照課本觀念與家長錯因分析，考前衝刺更省力。
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            id="btn-copy-inquiry"
+            class="touch-btn px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition"
+          >
+            複製「想了解每週整理方案」訊息
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 加入主畫面說明彈窗 -->
+  <div
+    id="home-guide-modal"
+    class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+  >
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-extrabold text-slate-900">如何把小工具加入手機／平板主畫面？</h3>
+        <button
+          type="button"
+          id="btn-close-guide"
+          class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="space-y-3 text-sm text-slate-700 leading-relaxed">
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-900">iPhone / iPad（Safari）</div>
+          <p>點選下方或上方工具列的「分享」圖示（方框向上箭頭）→ 往下滑找到「加入主畫面」→ 按「新增」。</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-900">Android 手機／平板（Chrome）</div>
+          <p>點選右上角「⋮」選單 → 選擇「加到主畫面」或「安裝應用程式」，桌面就會出現捷徑。</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        id="btn-ok-guide"
+        class="touch-btn w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition"
+      >
+        我知道了
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 錯題重練小工具核心邏輯
+     * 儲存機制：全數使用瀏覽器 LocalStorage，無需後端或付費資料庫。
+     */
+    (function () {
+      const STORAGE_MISTAKES_KEY = 'mistake_practice_tool_mistakes_v1';
+      const STORAGE_WISHES_KEY = 'mistake_practice_tool_wishes_v1';
+
+      // 快速篩選 / 標記標籤清單
+      const TAGS = ['全部', '國語', '數學', '康軒', '翰林', '南一'];
+
+      // 內建範例錯題（貼近國小低年級國語與數學常見錯題）
+      const SAMPLE_QUESTIONS = [
+        {
+          id: 'sample-1',
+          label: '範例1：國語部首（鄉）',
+          subject: '國語',
+          version: '康軒',
+          qtype: 'choice',
+          prompt: '「鄉」字右邊的「阝」，在字形結構上屬於哪一個部首？',
+          options: ['1 阜部', '2 邑部', '3 示部'],
+          answer: '2 邑部',
+          explanation: '「阝」在右邊時屬於「邑」部（跟城市、地方有關，例如：鄉、都）；在左邊時才屬於「阜」部（例如：陽、院）。'
+        },
+        {
+          id: 'sample-2',
+          label: '範例2：國語詞語填空（靜靜）',
+          subject: '國語',
+          version: '康軒',
+          qtype: 'text',
+          prompt: '哥哥在房間裡（　　　）的看書。（請填入：快快、高高、輕輕、靜靜）',
+          options: [],
+          answer: '靜靜',
+          explanation: '在房間看書需要安靜專心的環境，填入「靜靜」最符合語意與課文情境。'
+        },
+        {
+          id: 'sample-3',
+          label: '範例3：國語同音字（原／園／圓）',
+          subject: '國語',
+          version: '翰林',
+          qtype: 'choice',
+          prompt: '昨天全家人一起去公園散步，最後吃了甜甜的湯（　）。這裡應該選哪一個字？',
+          options: ['1 原', '2 園', '3 圓'],
+          answer: '3 圓',
+          explanation: '湯圓指的是圓形的點心，所以選「3 圓」；「原」偏向草原、原本，「園」偏向公園、果園。'
+        },
+        {
+          id: 'sample-4',
+          label: '範例4：數學加減應用',
+          subject: '數學',
+          version: '康軒',
+          qtype: 'text',
+          prompt: '桌上有 14 顆蘋果，吃掉 6 顆後，媽媽又買來 5 顆，現在一共有幾顆蘋果？（請寫出數字）',
+          options: [],
+          answer: '13',
+          explanation: '先算剩下的：14 - 6 = 8（顆），再算買來的：8 + 5 = 13（顆）。注意加減順序與題意變化。'
+        }
+      ];
+
+      // 應用程式狀態
+      let state = {
+        activeTab: 'practice',       // 'practice' | 'review'
+        activeTag: '全部',           // '全部' | '國語' | '數學' | '康軒' | '翰林' | '南一'
+        reviewStatusFilter: 'all',   // 'all' | 'due' | 'mastered'
+        editorCollapsed: false,
+        photoDataUrl: '',
+        selectedChoice: '',
+        mistakes: [],
+        wishes: [],
+        drill: {
+          active: false,
+          queue: [],
+          index: 0,
+          selectedChoice: '',
+          textInput: '',
+          revealed: false
+        }
+      };
+
+      // DOM 元素參照
+      const els = {
+        tagFilterBar: document.getElementById('tag-filter-bar'),
+        activeTagBadge: document.getElementById('active-tag-badge'),
+        tabPractice: document.getElementById('tab-practice'),
+        tabReview: document.getElementById('tab-review'),
+        reviewDueBadge: document.getElementById('review-due-badge'),
+        sectionPractice: document.getElementById('section-practice'),
+        sectionReview: document.getElementById('section-review'),
+        toastBanner: document.getElementById('toast-banner'),
+        cameraInput: document.getElementById('camera-input'),
+        samplePresets: document.getElementById('sample-presets'),
+        photoPreviewBox: document.getElementById('photo-preview-box'),
+        photoPreviewImg: document.getElementById('photo-preview-img'),
+        btnClearPhoto: document.getElementById('btn-clear-photo'),
+        btnToggleEditor: document.getElementById('btn-toggle-editor'),
+        questionSetupPanel: document.getElementById('question-setup-panel'),
+        inputSubject: document.getElementById('input-subject'),
+        inputVersion: document.getElementById('input-version'),
+        inputQtype: document.getElementById('input-qtype'),
+        inputPrompt: document.getElementById('input-prompt'),
+        choiceOptionsEditor: document.getElementById('choice-options-editor'),
+        inputOptions: document.getElementById('input-options'),
+        inputAnswer: document.getElementById('input-answer'),
+        inputExplanation: document.getElementById('input-explanation'),
+        practiceMetaPill: document.getElementById('practice-meta-pill'),
+        practiceQuestionDisplay: document.getElementById('practice-question-display'),
+        practiceAnswerArea: document.getElementById('practice-answer-area'),
+        btnSubmitAnswer: document.getElementById('btn-submit-answer'),
+        btnSaveMistakeDirect: document.getElementById('btn-save-mistake-direct'),
+        feedbackCard: document.getElementById('feedback-card'),
+        feedbackStatus: document.getElementById('feedback-status'),
+        feedbackMemoryTag: document.getElementById('feedback-memory-tag'),
+        feedbackCorrectAnswer: document.getElementById('feedback-correct-answer'),
+        feedbackExplanation: document.getElementById('feedback-explanation'),
+        btnGoReviewFromFeedback: document.getElementById('btn-go-review-from-feedback'),
+        btnNextSample: document.getElementById('btn-next-sample'),
+        btnStartDrill: document.getElementById('btn-start-drill'),
+        countAll: document.getElementById('count-all'),
+        countDue: document.getElementById('count-due'),
+        countMastered: document.getElementById('count-mastered'),
+        btnClearMastered: document.getElementById('btn-clear-mastered'),
+        drillSessionCard: document.getElementById('drill-session-card'),
+        drillProgressText: document.getElementById('drill-progress-text'),
+        btnExitDrill: document.getElementById('btn-exit-drill'),
+        drillMeta: document.getElementById('drill-meta'),
+        drillPrompt: document.getElementById('drill-prompt'),
+        drillPhoto: document.getElementById('drill-photo'),
+        drillAnswerArea: document.getElementById('drill-answer-area'),
+        drillRevealBox: document.getElementById('drill-reveal-box'),
+        drillCorrectAnswer: document.getElementById('drill-correct-answer'),
+        drillExplanation: document.getElementById('drill-explanation'),
+        btnDrillCheck: document.getElementById('btn-drill-check'),
+        btnDrillMastered: document.getElementById('btn-drill-mastered'),
+        btnDrillStillWrong: document.getElementById('btn-drill-still-wrong'),
+        mistakeList: document.getElementById('mistake-list'),
+        btnOpenWish: document.getElementById('btn-open-wish'),
+        btnOpenPlan: document.getElementById('btn-open-plan'),
+        wishPanel: document.getElementById('wish-panel'),
+        btnCloseWish: document.getElementById('btn-close-wish'),
+        wishInput: document.getElementById('wish-input'),
+        btnSaveWish: document.getElementById('btn-save-wish'),
+        wishHistoryList: document.getElementById('wish-history-list'),
+        planPanel: document.getElementById('plan-panel'),
+        btnClosePlan: document.getElementById('btn-close-plan'),
+        btnCopyInquiry: document.getElementById('btn-copy-inquiry'),
+        btnHomeGuide: document.getElementById('btn-home-guide'),
+        homeGuideModal: document.getElementById('home-guide-modal'),
+        btnCloseGuide: document.getElementById('btn-close-guide'),
+        btnOkGuide: document.getElementById('btn-ok-guide')
+      };
+
+      // 顯示非阻塞提示訊息（嚴禁使用 alert）
+      let toastTimer = null;
+      function showToast(message, tone = 'info') {
+        if (toastTimer) clearTimeout(toastTimer);
+        const styles = {
+          info: 'bg-indigo-50 text-indigo-900 border-indigo-200',
+          success: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+          warning: 'bg-amber-50 text-amber-900 border-amber-200',
+          error: 'bg-rose-50 text-rose-900 border-rose-200'
+        };
+        els.toastBanner.className = `rounded-2xl px-4 py-3 text-sm sm:text-base font-semibold shadow-sm border ${styles[tone] || styles.info}`;
+        els.toastBanner.textContent = message;
+        els.toastBanner.classList.remove('hidden');
+        toastTimer = setTimeout(() => {
+          els.toastBanner.classList.add('hidden');
+        }, 3200);
+      }
+
+      // 安全複製文字至剪貼簿（相容 iframe 環境）
+      function copyTextSafely(text, successMsg = '已複製到剪貼簿！') {
+        try {
+          const tempInput = document.createElement('textarea');
+          tempInput.value = text;
+          tempInput.setAttribute('readonly', '');
+          tempInput.style.position = 'fixed';
+          tempInput.style.left = '-9999px';
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+          showToast(successMsg, 'success');
+        } catch (err) {
+          showToast('無法自動複製，請手動選取文字複製。', 'warning');
+        }
+      }
+
+      // 格式化時間戳記
+      function formatTime(isoString) {
+        if (!isoString) return '剛剛';
+        try {
+          const d = new Date(isoString);
+          if (Number.isNaN(d.getTime())) return '剛剛';
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          const hh = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          return `${mm}/${dd} ${hh}:${min}`;
+        } catch (_) {
+          return '剛剛';
+        }
+      }
+
+      // 讀取與儲存 LocalStorage
+      function loadFromStorage() {
+        try {
+          const rawMistakes = localStorage.getItem(STORAGE_MISTAKES_KEY);
+          const parsedMistakes = rawMistakes ? JSON.parse(rawMistakes) : [];
+          state.mistakes = Array.isArray(parsedMistakes) ? parsedMistakes : [];
+        } catch (err) {
+          console.error('讀取錯題紀錄失敗：', err);
+          state.mistakes = [];
+        }
+
+        try {
+          const rawWishes = localStorage.getItem(STORAGE_WISHES_KEY);
+          const parsedWishes = rawWishes ? JSON.parse(rawWishes) : [];
+          state.wishes = Array.isArray(parsedWishes) ? parsedWishes : [];
+        } catch (err) {
+          console.error('讀取許願紀錄失敗：', err);
+          state.wishes = [];
+        }
+      }
+
+      function saveMistakes() {
+        try {
+          localStorage.setItem(STORAGE_MISTAKES_KEY, JSON.stringify(state.mistakes));
+        } catch (err) {
+          console.error('儲存錯題紀錄失敗：', err);
+          showToast('儲存空間可能已滿（若照片太大可先移除照片再存）。', 'warning');
+        }
+      }
+
+      function saveWishes() {
+        try {
+          localStorage.setItem(STORAGE_WISHES_KEY, JSON.stringify(state.wishes));
+        } catch (err) {
+          console.error('儲存許願紀錄失敗：', err);
+        }
+      }
+
+      // 渲染科目 / 版本快速標籤列
+      function renderTagBar() {
+        els.tagFilterBar.innerHTML = '';
+        TAGS.forEach((tag) => {
+          const isSelected = state.activeTag === tag;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = tag;
+          btn.className = isSelected
+            ? 'px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-indigo-600 text-white shadow-xs transition'
+            : 'px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+
+          btn.addEventListener('click', () => {
+            state.activeTag = tag;
+            // 若點選特定科目或版本，同步更新出題下拉選單方便輸入
+            if (['國語', '數學'].includes(tag)) {
+              els.inputSubject.value = tag;
+            } else if (['康軒', '翰林', '南一'].includes(tag)) {
+              els.inputVersion.value = tag;
+            }
+            syncPracticeMetaDisplay();
+            renderTagBar();
+            if (state.activeTab === 'review') {
+              renderReviewSection();
+            }
+          });
+          els.tagFilterBar.appendChild(btn);
+        });
+        els.activeTagBadge.textContent = `目前標籤：${state.activeTag}`;
+      }
+
+      // 渲染範例錯題按鈕
+      function renderSamplePresets() {
+        els.samplePresets.innerHTML = '';
+        SAMPLE_QUESTIONS.forEach((sample) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = sample.label;
+          btn.className = 'px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 hover:border-indigo-300 transition';
+          btn.addEventListener('click', () => {
+            applyQuestionToEditor(sample);
+            showToast(`已套用「${sample.label}」，請直接作答！`, 'info');
+          });
+          els.samplePresets.appendChild(btn);
+        });
+      }
+
+      // 將題目資料套用至編輯器與作答區
+      function applyQuestionToEditor(q) {
+        els.inputSubject.value = q.subject || '國語';
+        els.inputVersion.value = q.version || '康軒';
+        els.inputQtype.value = q.qtype || 'choice';
+        els.inputPrompt.value = q.prompt || '';
+        els.inputOptions.value = Array.isArray(q.options) ? q.options.join('，') : '';
+        els.inputAnswer.value = q.answer || '';
+        els.inputExplanation.value = q.explanation || '';
+        state.selectedChoice = '';
+        els.feedbackCard.classList.add('hidden');
+        syncEditorTypeVisibility();
+        syncPracticeMetaDisplay();
+        renderPracticeAnswerControls();
+      }
+
+      function syncEditorTypeVisibility() {
+        const isChoice = els.inputQtype.value === 'choice';
+        els.choiceOptionsEditor.classList.toggle('hidden', !isChoice);
+      }
+
+      function syncPracticeMetaDisplay() {
+        const subj = els.inputSubject.value || '國語';
+        const ver = els.inputVersion.value || '康軒';
+        els.practiceMetaPill.textContent = `${subj}・${ver}`;
+        const promptText = els.inputPrompt.value.trim();
+        els.practiceQuestionDisplay.textContent = promptText || '請先選擇範例題目或輸入題目內容';
+      }
+
+      // 解析選項字串
+      function parseOptions(raw) {
+        if (!raw) return [];
+        return raw
+          .split(/[,，\n]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      // 渲染孩子作答控制區（選擇題大按鈕或填空輸入框）
+      function renderPracticeAnswerControls() {
+        const qtype = els.inputQtype.value;
+        els.practiceAnswerArea.innerHTML = '';
+
+        if (qtype === 'choice') {
+          const opts = parseOptions(els.inputOptions.value);
+          if (opts.length === 0) {
+            const hint = document.createElement('div');
+            hint.className = 'text-sm text-slate-500';
+            hint.textContent = '目前沒有選項，可在上方輸入選項，或切換為「填空／造詞作答輸入」。';
+            els.practiceAnswerArea.appendChild(hint);
+            return;
+          }
+
+          const grid = document.createElement('div');
+          grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2.5';
+          opts.forEach((opt) => {
+            const isPicked = state.selectedChoice === opt;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = opt;
+            btn.className = isPicked
+              ? 'touch-btn w-full py-3 px-4 rounded-xl text-left font-extrabold text-base bg-indigo-600 text-white border-2 border-indigo-700 shadow-xs transition'
+              : 'touch-btn w-full py-3 px-4 rounded-xl text-left font-bold text-base bg-white text-slate-800 border-2 border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 transition';
+
+            btn.addEventListener('click', () => {
+              state.selectedChoice = opt;
+              renderPracticeAnswerControls();
+            });
+            grid.appendChild(btn);
+          });
+          els.practiceAnswerArea.appendChild(grid);
+        } else {
+          const input = document.createElement('input');
+          input.id = 'child-text-answer';
+          input.type = 'text';
+          input.placeholder = '小朋友在這裡輸入答案...';
+          input.className = 'touch-btn w-full rounded-xl border-2 border-slate-300 focus:border-indigo-500 bg-white px-4 py-3 text-base sm:text-lg font-bold focus:outline-none';
+          els.practiceAnswerArea.appendChild(input);
+        }
+      }
+
+      // 取得孩子目前作答內容
+      function getChildAnswer() {
+        if (els.inputQtype.value === 'choice') {
+          return state.selectedChoice.trim();
+        }
+        const inputEl = document.getElementById('child-text-answer');
+        return inputEl ? inputEl.value.trim() : '';
+      }
+
+      // 判斷是否答對（寬鬆比對空白與全半形差異）
+      function normalizeAnswer(str) {
+        return (str || '').replace(/\s+/g, '').toLowerCase();
+      }
+
+      function checkIsCorrect(childAns, correctAns) {
+        if (!correctAns) return false;
+        const cNorm = normalizeAnswer(childAns);
+        const aNorm = normalizeAnswer(correctAns);
+        if (!cNorm) return false;
+        if (cNorm === aNorm) return true;
+        // 若選項包含編號如「2 邑部」，而孩子只選「2」或寫「邑部」
+        const firstToken = normalizeAnswer(correctAns.split(/[\s、,，]/)[0]);
+        if (firstToken && cNorm === firstToken) return true;
+        return false;
+      }
+
+      // 將題目存入或更新至 LocalStorage 錯題記憶庫
+      function recordMistakeInMemory({ forceDue = false }) {
+        const subject = els.inputSubject.value || '國語';
+        const version = els.inputVersion.value || '康軒';
+        const qtype = els.inputQtype.value || 'choice';
+        const prompt = els.inputPrompt.value.trim() || '（未填寫題目文字，請參考錯題照片）';
+        const options = qtype === 'choice' ? parseOptions(els.inputOptions.value) : [];
+        const answer = els.inputAnswer.value.trim() || '（尚未填寫標準答案）';
+        const explanation = els.inputExplanation.value.trim() || '建議對照課本例句或基本觀念，陪孩子一起釐清易錯細節。';
+        const nowIso = new Date().toISOString();
+
+        // 檢查是否已有相同題目，若有則累加錯誤次數並設為待複習
+        const existingIndex = state.mistakes.findIndex(
+          (item) => item.prompt === prompt && item.subject === subject && item.version === version
+        );
+
+        if (existingIndex >= 0) {
+          const item = state.mistakes[existingIndex];
+          item.wrongCount = (item.wrongCount || 1) + 1;
+          item.lastWrongAt = nowIso;
+          item.status = 'due';
+          item.answer = answer;
+          item.explanation = explanation;
+          item.options = options;
+          item.qtype = qtype;
+          if (state.photoDataUrl) item.photoDataUrl = state.photoDataUrl;
+        } else {
+          state.mistakes.unshift({
+            id: 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            subject,
+            version,
+            qtype,
+            prompt,
+            options,
+            answer,
+            explanation,
+            photoDataUrl: state.photoDataUrl || '',
+            wrongCount: forceDue ? 1 : 1,
+            lastWrongAt: nowIso,
+            status: 'due' // 'due' | 'mastered'
+          });
+        }
+
+        saveMistakes();
+        updateReviewBadges();
+      }
+
+      // 送出作答並顯示回饋
+      function handleSubmitAnswer() {
+        const prompt = els.inputPrompt.value.trim();
+        const correctAns = els.inputAnswer.value.trim();
+        const childAns = getChildAnswer();
+
+        if (!prompt && !state.photoDataUrl) {
+          showToast('請先拍一張錯題照、選範例題目，或輸入題目內容！', 'warning');
+          return;
+        }
+        if (!childAns) {
+          showToast('小朋友還沒作答喔！先點選選項或輸入答案再送出。', 'warning');
+          return;
+        }
+
+        const isCorrect = correctAns ? checkIsCorrect(childAns, correctAns) : false;
+        const explanation = els.inputExplanation.value.trim() || '建議對照課本重點，引導孩子說出自己的想法再訂正。';
+
+        els.feedbackCard.classList.remove('hidden');
+        els.feedbackCorrectAnswer.textContent = correctAns || '（尚未設定標準答案，可由家長確認）';
+        els.feedbackExplanation.textContent = explanation;
+
+        if (isCorrect) {
+          els.feedbackCard.className = 'rounded-2xl p-4 sm:p-5 border-2 space-y-3 bg-emerald-50/80 border-emerald-300';
+          els.feedbackStatus.className = 'text-lg sm:text-xl font-extrabold text-emerald-800';
+          els.feedbackStatus.textContent = `答對了！你的作答是「${childAns}」`;
+          els.feedbackMemoryTag.className = 'text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-emerald-200/80 text-emerald-900';
+          els.feedbackMemoryTag.textContent = '觀念不錯，繼續保持！';
+        } else {
+          // 答錯自動存入 LocalStorage 錯題記憶庫
+          recordMistakeInMemory({ forceDue: true });
+          els.feedbackCard.className = 'rounded-2xl p-4 sm:p-5 border-2 space-y-3 bg-rose-50/80 border-rose-300';
+          els.feedbackStatus.className = 'text-lg sm:text-xl font-extrabold text-rose-800';
+          els.feedbackStatus.textContent = `這題還差一點（你寫的是「${childAns}」）`;
+          els.feedbackMemoryTag.className = 'text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-900';
+          els.feedbackMemoryTag.textContent = '已自動記進「錯題複習本」';
+          showToast('答錯囉！這題已自動記進「錯題複習本」，之後可專門複習。', 'error');
+        }
+      }
+
+      // 切換主模式（拍錯題作答 / 錯題複習本）
+      function switchTab(tabName) {
+        state.activeTab = tabName;
+        const isPractice = tabName === 'practice';
+
+        els.sectionPractice.classList.toggle('hidden', !isPractice);
+        els.sectionReview.classList.toggle('hidden', isPractice);
+
+        if (isPractice) {
+          els.tabPractice.className = 'touch-btn w-full py-3.5 px-4 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition shadow-sm bg-indigo-600 text-white';
+          els.tabReview.className = 'touch-btn w-full py-3.5 px-4 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition border bg-white text-slate-700 border-slate-300 hover:bg-slate-50';
+        } else {
+          els.tabReview.className = 'touch-btn w-full py-3.5 px-4 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition shadow-sm bg-rose-600 text-white';
+          els.tabPractice.className = 'touch-btn w-full py-3.5 px-4 rounded-2xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition border bg-white text-slate-700 border-slate-300 hover:bg-slate-50';
+          renderReviewSection();
+        }
+      }
+
+      // 更新待複習數量徽章與統計數字
+      function updateReviewBadges() {
+        const total = state.mistakes.length;
+        const dueCount = state.mistakes.filter((m) => m.status === 'due').length;
+        const masteredCount = state.mistakes.filter((m) => m.status === 'mastered').length;
+
+        els.reviewDueBadge.textContent = String(dueCount);
+        els.countAll.textContent = String(total);
+        els.countDue.textContent = String(dueCount);
+        els.countMastered.textContent = String(masteredCount);
+      }
+
+      // 取得目前篩選條件下的錯題清單
+      function getFilteredMistakes() {
+        return state.mistakes.filter((item) => {
+          const matchStatus =
+            state.reviewStatusFilter === 'all' || item.status === state.reviewStatusFilter;
+          const matchTag =
+            state.activeTag === '全部' ||
+            item.subject === state.activeTag ||
+            item.version === state.activeTag;
+          return matchStatus && matchTag;
+        });
+      }
+
+      // 渲染「錯題複習本」區塊
+      function renderReviewSection() {
+        updateReviewBadges();
+
+        // 更新狀態篩選按鈕樣式
+        document.querySelectorAll('.status-filter-btn').forEach((btn) => {
+          const st = btn.getAttribute('data-status');
+          const active = st === state.reviewStatusFilter;
+          if (st === 'all') {
+            btn.className = active
+              ? 'status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-900 text-white transition'
+              : 'status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+          } else if (st === 'due') {
+            btn.className = active
+              ? 'status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 text-white transition'
+              : 'status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition';
+          } else {
+            btn.className = active
+              ? 'status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white transition'
+              : 'status-filter-btn touch-btn px-4 py-2 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition';
+          }
+        });
+
+        const list = getFilteredMistakes();
+        els.mistakeList.innerHTML = '';
+
+        if (list.length === 0) {
+          const emptyCard = document.createElement('div');
+          emptyCard.className = 'bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-2';
+          emptyCard.innerHTML = `
+            <div class="text-lg font-bold text-slate-700">目前沒有符合條件的錯題紀錄</div>
+            <p class="text-sm text-slate-500">可以切換其他篩選標籤，或回到「＋ 拍錯題作答」練習並存進錯題本。</p>
+          `;
+          els.mistakeList.appendChild(emptyCard);
+          return;
+        }
+
+        list.forEach((item) => {
+          const isDue = item.status === 'due';
+          const card = document.createElement('article');
+          card.className = `bg-white rounded-2xl border p-4 sm:p-5 shadow-xs space-y-3 ${
+            isDue ? 'border-rose-200' : 'border-emerald-200'
+          }`;
+
+          const topRow = document.createElement('div');
+          topRow.className = 'flex flex-wrap items-center justify-between gap-2';
+          topRow.innerHTML = `
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-700">
+                ${escapeHtml(item.subject || '國語')}・${escapeHtml(item.version || '康軒')}
+              </span>
+              <span class="px-2.5 py-1 rounded-lg text-xs font-extrabold ${
+                isDue ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+              }">
+                ${isDue ? '待複習' : '已掌握'}
+              </span>
+              <span class="text-xs font-bold text-slate-500">
+                錯 ${item.wrongCount || 1} 次・上次錯：${formatTime(item.lastWrongAt)}
+              </span>
+            </div>
+          `;
+
+          const promptEl = document.createElement('div');
+          promptEl.className = 'text-base sm:text-lg font-extrabold text-slate-900 leading-snug';
+          promptEl.textContent = item.prompt;
+
+          const detailBox = document.createElement('div');
+          detailBox.className = 'rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs sm:text-sm text-slate-700 space-y-1';
+          detailBox.innerHTML = `
+            <div><span class="font-bold text-slate-900">正確答案：</span><span class="font-bold text-indigo-700">${escapeHtml(item.answer)}</span></div>
+            <div><span class="font-bold text-slate-900">家長錯因解析：</span>${escapeHtml(item.explanation)}</div>
+          `;
+
+          if (item.photoDataUrl) {
+            const img = document.createElement('img');
+            img.src = item.photoDataUrl;
+            img.alt = '錯題照片';
+            img.className = 'w-full max-h-48 object-contain rounded-xl border border-slate-200 bg-slate-50';
+            card.appendChild(topRow);
+            card.appendChild(promptEl);
+            card.appendChild(img);
+            card.appendChild(detailBox);
+          } else {
+            card.appendChild(topRow);
+            card.appendChild(promptEl);
+            card.appendChild(detailBox);
+          }
+
+          const actionRow = document.createElement('div');
+          actionRow.className = 'flex flex-wrap items-center justify-end gap-2 pt-1';
+
+          const toggleBtn = document.createElement('button');
+          toggleBtn.type = 'button';
+          toggleBtn.textContent = isDue ? '標記已掌握' : '改回待複習';
+          toggleBtn.className = isDue
+            ? 'touch-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition'
+            : 'touch-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition';
+          toggleBtn.addEventListener('click', () => {
+            item.status = isDue ? 'mastered' : 'due';
+            saveMistakes();
+            renderReviewSection();
+            showToast(item.status === 'mastered' ? '已標記為「已掌握」' : '已移回「待複習」', 'success');
+          });
+
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.textContent = '刪除';
+          delBtn.className = 'touch-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 transition';
+          delBtn.addEventListener('click', () => {
+            state.mistakes = state.mistakes.filter((m) => m.id !== item.id);
+            saveMistakes();
+            renderReviewSection();
+            showToast('已刪除這筆錯題紀錄', 'info');
+          });
+
+          actionRow.appendChild(toggleBtn);
+          actionRow.appendChild(delBtn);
+          card.appendChild(actionRow);
+
+          els.mistakeList.appendChild(card);
+        });
+      }
+
+      // 跳脫 HTML 特殊字元，避免 XSS
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // 「開始複習錯題」互動重練模式（只抽出待複習錯題）
+      function startDrillSession() {
+        const dueItems = state.mistakes.filter((m) => {
+          const isDue = m.status === 'due';
+          const matchTag =
+            state.activeTag === '全部' ||
+            m.subject === state.activeTag ||
+            m.version === state.activeTag;
+          return isDue && matchTag;
+        });
+
+        if (dueItems.length === 0) {
+          showToast('目前沒有「待複習」的錯題可以重練囉！', 'success');
+          return;
+        }
+
+        state.drill = {
+          active: true,
+          queue: dueItems.map((d) => d.id),
+          index: 0,
+          selectedChoice: '',
+          textInput: '',
+          revealed: false
+        };
+        els.drillSessionCard.classList.remove('hidden');
+        renderCurrentDrillCard();
+        els.drillSessionCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function renderCurrentDrillCard() {
+        if (!state.drill.active) return;
+
+        // 過濾出目前仍存在的待複習題目
+        const validQueue = state.drill.queue.filter((id) => {
+          const found = state.mistakes.find((m) => m.id === id);
+          return found && found.status === 'due';
+        });
+
+        if (validQueue.length === 0) {
+          state.drill.active = false;
+          els.drillSessionCard.classList.add('hidden');
+          showToast('太棒了！這一輪待複習錯題都練完囉！', 'success');
+          renderReviewSection();
+          return;
+        }
+
+        state.drill.queue = validQueue;
+        if (state.drill.index >= state.drill.queue.length) {
+          state.drill.index = 0;
+        }
+
+        const currentId = state.drill.queue[state.drill.index];
+        const item = state.mistakes.find((m) => m.id === currentId);
+        if (!item) return;
+
+        els.drillProgressText.textContent = `${state.drill.index + 1} / ${state.drill.queue.length}`;
+        els.drillMeta.textContent = `${item.subject}・${item.version}｜已錯 ${item.wrongCount || 1} 次`;
+        els.drillPrompt.textContent = item.prompt;
+
+        if (item.photoDataUrl) {
+          els.drillPhoto.src = item.photoDataUrl;
+          els.drillPhoto.classList.remove('hidden');
+        } else {
+          els.drillPhoto.src = '';
+          els.drillPhoto.classList.add('hidden');
+        }
+
+        els.drillAnswerArea.innerHTML = '';
+        if (item.qtype === 'choice' && Array.isArray(item.options) && item.options.length > 0) {
+          const grid = document.createElement('div');
+          grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2.5';
+          item.options.forEach((opt) => {
+            const active = state.drill.selectedChoice === opt;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = opt;
+            btn.className = active
+              ? 'touch-btn w-full py-2.5 px-4 rounded-xl text-left font-extrabold bg-rose-600 text-white border-2 border-rose-700 transition'
+              : 'touch-btn w-full py-2.5 px-4 rounded-xl text-left font-bold bg-white text-slate-800 border-2 border-slate-200 hover:border-rose-300 transition';
+            btn.addEventListener('click', () => {
+              state.drill.selectedChoice = opt;
+              renderCurrentDrillCard();
+            });
+            grid.appendChild(btn);
+          });
+          els.drillAnswerArea.appendChild(grid);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = state.drill.textInput;
+          input.placeholder = '重新寫一次答案...';
+          input.className = 'touch-btn w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-bold focus:outline-none focus:border-rose-500';
+          input.addEventListener('input', (e) => {
+            state.drill.textInput = e.target.value;
+          });
+          els.drillAnswerArea.appendChild(input);
+        }
+
+        els.drillCorrectAnswer.textContent = item.answer;
+        els.drillExplanation.textContent = item.explanation;
+        els.drillRevealBox.classList.toggle('hidden', !state.drill.revealed);
+      }
+
+      // 渲染許願清單
+      function renderWishes() {
+        els.wishHistoryList.innerHTML = '';
+        if (state.wishes.length === 0) return;
+        state.wishes.slice(0, 6).forEach((w) => {
+          const chip = document.createElement('span');
+          chip.className = 'px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold border border-amber-200';
+          chip.textContent = `許願：${w.text}`;
+          els.wishHistoryList.appendChild(chip);
+        });
+      }
+
+      // 綁定所有事件監聽器
+      function bindEvents() {
+        // 模式切換
+        els.tabPractice.addEventListener('click', () => switchTab('practice'));
+        els.tabReview.addEventListener('click', () => switchTab('review'));
+
+        // 拍照／選相簿
+        els.cameraInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            state.photoDataUrl = event.target.result || '';
+            if (state.photoDataUrl) {
+              els.photoPreviewImg.src = state.photoDataUrl;
+              els.photoPreviewBox.classList.remove('hidden');
+              showToast('照片已載入！你可以直接作答或填入題目資訊。', 'success');
+            }
+          };
+          reader.onerror = () => {
+            showToast('讀取照片失敗，請再試一次。', 'error');
+          };
+          reader.readAsDataURL(file);
+        });
+
+        // 移除照片
+        els.btnClearPhoto.addEventListener('click', () => {
+          state.photoDataUrl = '';
+          els.cameraInput.value = '';
+          els.photoPreviewImg.src = '';
+          els.photoPreviewBox.classList.add('hidden');
+        });
+
+        // 收合／展開出題設定
+        els.btnToggleEditor.addEventListener('click', () => {
+          state.editorCollapsed = !state.editorCollapsed;
+          els.questionSetupPanel.classList.toggle('hidden', state.editorCollapsed);
+        });
+
+        // 即時同步題目與選項變更
+        els.inputSubject.addEventListener('change', syncPracticeMetaDisplay);
+        els.inputVersion.addEventListener('change', syncPracticeMetaDisplay);
+        els.inputQtype.addEventListener('change', () => {
+          state.selectedChoice = '';
+          syncEditorTypeVisibility();
+          renderPracticeAnswerControls();
+        });
+        els.inputPrompt.addEventListener('input', syncPracticeMetaDisplay);
+        els.inputOptions.addEventListener('input', renderPracticeAnswerControls);
+
+        // 送出作答
+        els.btnSubmitAnswer.addEventListener('click', handleSubmitAnswer);
+
+        // 直接存進錯題本
+        els.btnSaveMistakeDirect.addEventListener('click', () => {
+          const prompt = els.inputPrompt.value.trim();
+          if (!prompt && !state.photoDataUrl) {
+            showToast('請先輸入題目或選擇範例／拍照再存入錯題本。', 'warning');
+            return;
+          }
+          recordMistakeInMemory({ forceDue: true });
+          showToast('已將這題存入「錯題複習本」待複習清單！', 'success');
+        });
+
+        // 回饋卡片按鈕
+        els.btnGoReviewFromFeedback.addEventListener('click', () => switchTab('review'));
+        els.btnNextSample.addEventListener('click', () => {
+          const currentPrompt = els.inputPrompt.value.trim();
+          const idx = SAMPLE_QUESTIONS.findIndex((s) => s.prompt === currentPrompt);
+          const nextSample = SAMPLE_QUESTIONS[(idx + 1) % SAMPLE_QUESTIONS.length];
+          applyQuestionToEditor(nextSample);
+          showToast(`已切換到「${nextSample.label}」`, 'info');
+        });
+
+        // 複習本狀態篩選
+        document.querySelectorAll('.status-filter-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.reviewStatusFilter = btn.getAttribute('data-status') || 'all';
+            renderReviewSection();
+          });
+        });
+
+        // 清除已掌握紀錄
+        els.btnClearMastered.addEventListener('click', () => {
+          const beforeLen = state.mistakes.length;
+          state.mistakes = state.mistakes.filter((m) => m.status !== 'mastered');
+          saveMistakes();
+          renderReviewSection();
+          if (state.mistakes.length < beforeLen) {
+            showToast('已清除「已掌握」的錯題紀錄。', 'info');
+          } else {
+            showToast('目前沒有「已掌握」的紀錄可清除。', 'info');
+          }
+        });
+
+        // 開始與控制重練模式
+        els.btnStartDrill.addEventListener('click', startDrillSession);
+        els.btnExitDrill.addEventListener('click', () => {
+          state.drill.active = false;
+          els.drillSessionCard.classList.add('hidden');
+        });
+        els.btnDrillCheck.addEventListener('click', () => {
+          state.drill.revealed = true;
+          els.drillRevealBox.classList.remove('hidden');
+        });
+        els.btnDrillMastered.addEventListener('click', () => {
+          const currentId = state.drill.queue[state.drill.index];
+          const item = state.mistakes.find((m) => m.id === currentId);
+          if (item) {
+            item.status = 'mastered';
+            saveMistakes();
+          }
+          state.drill.selectedChoice = '';
+          state.drill.textInput = '';
+          state.drill.revealed = false;
+          renderCurrentDrillCard();
+          renderReviewSection();
+          showToast('太棒了！這題已移出待複習。', 'success');
+        });
+        els.btnDrillStillWrong.addEventListener('click', () => {
+          const currentId = state.drill.queue[state.drill.index];
+          const item = state.mistakes.find((m) => m.id === currentId);
+          if (item) {
+            item.status = 'due';
+            item.wrongCount = (item.wrongCount || 1) + 1;
+            item.lastWrongAt = new Date().toISOString();
+            saveMistakes();
+          }
+          state.drill.selectedChoice = '';
+          state.drill.textInput = '';
+          state.drill.revealed = false;
+          state.drill.index = (state.drill.index + 1) % Math.max(1, state.drill.queue.length);
+          renderCurrentDrillCard();
+          renderReviewSection();
+          showToast('沒關係，這題繼續留在待複習清單，下次再練！', 'warning');
+        });
+
+        // 底部敲碗許願與付費方案
+        els.btnOpenWish.addEventListener('click', () => {
+          els.planPanel.classList.add('hidden');
+          els.wishPanel.classList.toggle('hidden');
+        });
+        els.btnCloseWish.addEventListener('click', () => els.wishPanel.classList.add('hidden'));
+
+        els.btnSaveWish.addEventListener('click', () => {
+          const text = els.wishInput.value.trim();
+          if (!text) {
+            showToast('請先輸入想敲碗的年級、科目或課本版本！', 'warning');
+            return;
+          }
+          state.wishes.unshift({ text, at: new Date().toISOString() });
+          saveWishes();
+          renderWishes();
+          els.wishInput.value = '';
+          copyTextSafely(`敲碗想要「${text}」的錯題重練與解析！`, '已記下許願並複製留言文字，可直接貼到社群留言！');
+        });
+
+        els.btnOpenPlan.addEventListener('click', () => {
+          els.wishPanel.classList.add('hidden');
+          els.planPanel.classList.toggle('hidden');
+        });
+        els.btnClosePlan.addEventListener('click', () => els.planPanel.classList.add('hidden'));
+
+        els.btnCopyInquiry.addEventListener('click', () => {
+          copyTextSafely(
+            '您好，我想了解「每週錯題重練卷＋家長錯因解析」的整理與付費方案！',
+            '已複製詢問訊息，可直接貼上聯繫！'
+          );
+        });
+
+        // 加入主畫面說明彈窗
+        els.btnHomeGuide.addEventListener('click', () => els.homeGuideModal.classList.remove('hidden'));
+        els.btnCloseGuide.addEventListener('click', () => els.homeGuideModal.classList.add('hidden'));
+        els.btnOkGuide.addEventListener('click', () => els.homeGuideModal.classList.add('hidden'));
+      }
+
+      // 初始化
+      function init() {
+        loadFromStorage();
+        renderTagBar();
+        renderSamplePresets();
+        renderWishes();
+        updateReviewBadges();
+        applyQuestionToEditor(SAMPLE_QUESTIONS[0]);
+        bindEvents();
+      }
+
+      window.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>
