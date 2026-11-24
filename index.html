@@ -99,17 +99,24 @@
       margin-top: 16px;
     }
 
-    button {
+    button,
+    .btn-pick {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       border: none;
       border-radius: 12px;
       padding: 11px 15px;
       font-size: 0.96rem;
       font-weight: 700;
       cursor: pointer;
+      user-select: none;
       transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease;
     }
 
-    button:active {
+    button:active,
+    .btn-pick:active {
       transform: scale(0.98);
     }
 
@@ -161,7 +168,7 @@
       margin-bottom: 14px;
     }
 
-    label {
+    label.field-label {
       display: block;
       font-weight: 700;
       margin-bottom: 6px;
@@ -206,6 +213,15 @@
       gap: 8px;
     }
 
+    .sr-file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
     .photo-tip {
       margin-top: 6px;
       font-size: 0.84rem;
@@ -245,7 +261,6 @@
       border: 1px solid var(--danger-border);
     }
 
-    /* AI 選填區塊 */
     .ai-box {
       margin-top: 12px;
       padding: 13px 15px;
@@ -428,7 +443,7 @@
     <div id="practiceSection" class="card">
       <div class="row-3">
         <div class="field-group">
-          <label for="subjectSelect">科目</label>
+          <label class="field-label" for="subjectSelect">科目</label>
           <select id="subjectSelect">
             <option value="數學">數學</option>
             <option value="國語">國語</option>
@@ -439,19 +454,19 @@
         </div>
 
         <div class="field-group">
-          <label for="questionCount">列出幾題</label>
+          <label class="field-label" for="questionCount">列出幾題</label>
           <input id="questionCount" type="number" min="1" max="20" value="3" onchange="syncQuestionCards()" />
         </div>
 
         <div class="field-group">
-          <label>拍考卷／選照片</label>
+          <span class="field-label">拍考卷／選照片</span>
           <div class="photo-actions">
-            <button type="button" class="btn-primary" onclick="triggerCameraCapture()">
+            <label for="cameraInput" class="btn-pick btn-primary">
               拍考卷
-            </button>
-            <button type="button" class="btn-secondary" onclick="triggerGalleryPick()">
+            </label>
+            <label for="galleryInput" class="btn-pick btn-secondary">
               選相簿多張
-            </button>
+            </label>
           </div>
           <div id="photoFileName" class="photo-tip">拍完或選完照片，下方會自動列出題目卡片</div>
 
@@ -460,7 +475,7 @@
             type="file"
             accept="image/*"
             capture="environment"
-            class="hidden"
+            class="sr-file-input"
             onchange="handlePhotoChange(event)"
           />
           <input
@@ -468,7 +483,7 @@
             type="file"
             accept="image/*"
             multiple
-            class="hidden"
+            class="sr-file-input"
             onchange="handlePhotoChange(event)"
           />
         </div>
@@ -476,7 +491,6 @@
 
       <div id="photoGrid" class="photo-grid"></div>
 
-      <!-- 做法 B：選填 Gemini API Key 自動讀圖抓題目 -->
       <div class="ai-box">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
           <strong style="color: #5b21b6; font-size: 0.94rem;">AI 讀圖幫列題目（選填，沒填也能直接用下方卡片）</strong>
@@ -496,7 +510,6 @@
         <div id="aiStatusTip" style="margin-top: 6px; font-size: 0.84rem; color: #5b21b6;"></div>
       </div>
 
-      <!-- 題目卡片清單 -->
       <div id="questionCardsContainer" class="generated-list"></div>
 
       <div class="action-bar">
@@ -599,18 +612,6 @@
       renderMistakes();
     }
 
-    function triggerCameraCapture() {
-      const input = document.getElementById('cameraInput');
-      input.value = '';
-      input.click();
-    }
-
-    function triggerGalleryPick() {
-      const input = document.getElementById('galleryInput');
-      input.value = '';
-      input.click();
-    }
-
     function compressImageFile(file, maxWidth = 1000, quality = 0.72) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -659,6 +660,7 @@
         }
       }
 
+      event.target.value = '';
       renderPhotoGrid();
       if (added > 0) {
         const countInput = document.getElementById('questionCount');
@@ -669,7 +671,7 @@
         syncQuestionCards();
         tipEl.textContent = `已加入 ${currentPhotos.length} 張照片（下方已列出卡片，也可按 AI 幫列題目）`;
       } else {
-        tipEl.textContent = '照片載入失敗，請改用「選相簿多張」或用瀏覽器開啟再試一次。';
+        tipEl.textContent = '照片載入失敗，請換一張圖片或用瀏覽器開啟再試一次。';
       }
     }
 
@@ -861,7 +863,7 @@
 
               <div class="q-mini-grid">
                 <div>
-                  <label style="font-size: 0.82rem;">重寫答案</label>
+                  <label class="field-label" style="font-size: 0.82rem;">重寫答案</label>
                   <input
                     type="text"
                     value="${escapeAttr(q.userAnswer)}"
@@ -870,7 +872,7 @@
                   />
                 </div>
                 <div>
-                  <label style="font-size: 0.82rem;">課本／習作正答</label>
+                  <label class="field-label" style="font-size: 0.82rem;">課本／習作正答</label>
                   <input
                     type="text"
                     value="${escapeAttr(q.correctAnswer)}"
@@ -879,7 +881,7 @@
                   />
                 </div>
                 <div>
-                  <label style="font-size: 0.82rem;">揪出的錯因</label>
+                  <label class="field-label" style="font-size: 0.82rem;">揪出的錯因</label>
                   <input
                     type="text"
                     value="${escapeAttr(q.note)}"
