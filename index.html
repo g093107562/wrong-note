@@ -782,7 +782,9 @@
 
         document.getElementById('questionCount').value = questionDrafts.length;
         renderQuestionCards();
-        statusEl.textContent = `已完成！AI 幫你列出了 ${questionDrafts.length} 題，直接讓孩子重寫作答吧！`; } catch (err) { statusEl.textContent = `辨識失敗：${err.message}（可改用手動填寫下方題目卡片）`;
+        statusEl.textContent = `已完成！AI 幫你列出了 ${questionDrafts.length} 題，直接讓孩子重寫作答吧！`;
+      } catch (err) {
+        statusEl.textContent = `辨識失敗：${err.message}（可改用手動填寫下方題目卡片）`;
       } finally {
         btn.disabled = false;
       }
@@ -794,7 +796,20 @@
       while (questionDrafts.length < desired) {
         const idx = questionDrafts.length;
         questionDrafts.push({
-          title: `第 ${idx + 1} 題`, userAnswer: '', correctAnswer: '', note: '' }); }  if (questionDrafts.length > desired) { questionDrafts = questionDrafts.slice(0, desired); }  questionDrafts.forEach((q, idx) => { if (!q.title \vert{}\vert{} /^第 \d+ 題$/.test(q.title)) { q.title = `第 ${idx + 1} 題`;
+          title: `第 ${idx + 1} 題`,
+          userAnswer: '',
+          correctAnswer: '',
+          note: ''
+        });
+      }
+
+      if (questionDrafts.length > desired) {
+        questionDrafts = questionDrafts.slice(0, desired);
+      }
+
+      questionDrafts.forEach((q, idx) => {
+        if (!q.title || /^第 \d+ 題$/.test(q.title)) {
+          q.title = `第 ${idx + 1} 題`;
         }
       });
 
@@ -846,4 +861,235 @@
 
               <div class="q-mini-grid">
                 <div>
-                  <label style="font-size: 0.82rem;">重寫答案
+                  <label style="font-size: 0.82rem;">重寫答案</label>
+                  <input
+                    type="text"
+                    value="${escapeAttr(q.userAnswer)}"
+                    oninput="updateDraft(${idx}, 'userAnswer', this.value)"
+                    placeholder="輸入重寫答案"
+                  />
+                </div>
+                <div>
+                  <label style="font-size: 0.82rem;">課本／習作正答</label>
+                  <input
+                    type="text"
+                    value="${escapeAttr(q.correctAnswer)}"
+                    oninput="updateDraft(${idx}, 'correctAnswer', this.value)"
+                    placeholder="輸入正確答案"
+                  />
+                </div>
+                <div>
+                  <label style="font-size: 0.82rem;">揪出的錯因</label>
+                  <input
+                    type="text"
+                    value="${escapeAttr(q.note)}"
+                    oninput="updateDraft(${idx}, 'note', this.value)"
+                    placeholder="哪裡寫錯、觀念卡在哪"
+                  />
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function updateDraft(index, field, value) {
+      if (!questionDrafts[index]) return;
+      questionDrafts[index][field] = value;
+    }
+
+    function setDraftChoice(index, choice) {
+      if (!questionDrafts[index]) return;
+      questionDrafts[index].userAnswer = choice;
+      renderQuestionCards();
+    }
+
+    function upsertMistakeItem(items, version, subject, draft, photo) {
+      const existingIndex = items.findIndex(
+        (x) => !x.mastered && x.question === draft.title && x.subject === subject && x.version === version
+      );
+
+      if (existingIndex >= 0) {
+        items[existingIndex].wrongCount += 1;
+        items[existingIndex].lastWrongAt = new Date().toLocaleString('zh-TW');
+        if (draft.userAnswer) items[existingIndex].userAnswer = draft.userAnswer;
+        if (draft.correctAnswer) items[existingIndex].correctAnswer = draft.correctAnswer;
+        if (draft.note) items[existingIndex].parentNote = draft.note;
+        if (photo) items[existingIndex].photo = photo;
+      } else {
+        items.unshift({
+          id: Date.now() + Math.random(),
+          version,
+          subject,
+          question: draft.title || '未命名題目',
+          userAnswer: draft.userAnswer || '',
+          correctAnswer: draft.correctAnswer || '',
+          parentNote: draft.note || '對照課本與習作找出錯因，再重寫一次。',
+          photo: photo || '',
+          wrongCount: 1,
+          lastWrongAt: new Date().toLocaleString('zh-TW'),
+          mastered: false
+        });
+      }
+    }
+
+    function judgeAllCards() {
+      const version = document.getElementById('versionSelect').value;
+      const subject = document.getElementById('subjectSelect').value;
+      const feedback = document.getElementById('feedbackBox');
+      const photoUrls = currentPhotos.map((p) => p.data);
+
+      const items = loadMistakes();
+      let passCount = 0;
+      let holdCount = 0;
+      const lines = [];
+
+      questionDrafts.forEach((draft, idx) => {
+        const photo = photoUrls[idx] || photoUrls[0] || '';
+        const uAns = (draft.userAnswer || '').trim();
+        const cAns = (draft.correctAnswer || '').trim();
+
+        if (!cAns) {
+          upsertMistakeItem(items, version, subject, draft, photo);
+          holdCount += 1;
+          lines.push(`• ${escapeHtml(draft.title)}：未填正答，先留著不放過`);
+          return;
+        }
+
+        if (uAns && uAns.toLowerCase() === cAns.toLowerCase()) {
+          passCount += 1;
+          lines.push(`• ${escapeHtml(draft.title)}：重寫答對（${escapeHtml(uAns)}）→ 過關！`);
+        } else {
+          upsertMistakeItem(items, version, subject, draft, photo);
+          holdCount += 1;
+          lines.push(
+            `• ${escapeHtml(draft.title)}：重寫「${escapeHtml(uAns || '未填')}」／正答「<strong>${escapeHtml(cAns)}</strong>」→ 錯了不放過`
+          );
+        }
+      });
+
+      if (!saveMistakes(items)) return;
+
+      feedback.className = holdCount > 0 ? 'feedback wrong' : 'feedback right';
+      feedback.innerHTML = `
+        <strong>判定完成：過關 ${passCount} 題、不放過 ${holdCount} 題。</strong><br>
+        <div style="margin-top: 8px; font-size: 0.92rem;">${lines.join('<br>')}</div>
+      `;
+    }
+
+    function putAllCardsIntoMistake() {
+      const version = document.getElementById('versionSelect').value;
+      const subject = document.getElementById('subjectSelect').value;
+      const feedback = document.getElementById('feedbackBox');
+      const photoUrls = currentPhotos.map((p) => p.data);
+
+      const items = loadMistakes();
+      questionDrafts.forEach((draft, idx) => {
+        const photo = photoUrls[idx] || photoUrls[0] || '';
+        upsertMistakeItem(items, version, subject, draft, photo);
+      });
+
+      if (!saveMistakes(items)) return;
+
+      feedback.className = 'feedback wrong';
+      feedback.innerHTML = `<strong>已將 ${questionDrafts.length} 題放進「不放過錯題本」！</strong> 切到上方錯題本重寫，對了才過關。`;
+    }
+
+    function clearAllDraft() {
+      currentPhotos = [];
+      questionDrafts = [];
+      document.getElementById('questionCount').value = 3;
+      document.getElementById('cameraInput').value = '';
+      document.getElementById('galleryInput').value = '';
+      document.getElementById('photoFileName').textContent = '拍完或選完照片，下方會自動列出題目卡片';
+      document.getElementById('aiStatusTip').textContent = '';
+      document.getElementById('feedbackBox').className = 'feedback';
+      renderPhotoGrid();
+      syncQuestionCards();
+    }
+
+    function markMastered(id) {
+      const items = loadMistakes().map((item) =>
+        item.id === id ? { ...item, mastered: !item.mastered } : item
+      );
+      saveMistakes(items);
+    }
+
+    function deleteMistake(id) {
+      const items = loadMistakes().filter((item) => item.id !== id);
+      saveMistakes(items);
+    }
+
+    function clearAllMistakes() {
+      if (!confirm('確定要清空所有錯題紀錄嗎？')) return;
+      saveMistakes([]);
+    }
+
+    function renderMistakes() {
+      const allItems = loadMistakes();
+      const pending = allItems.filter((x) => !x.mastered);
+      document.getElementById('wrongCount').textContent = pending.length;
+
+      const listEl = document.getElementById('mistakeList');
+      if (!listEl) return;
+
+      const visibleItems = reviewFilter === 'pending' ? pending : allItems;
+
+      if (visibleItems.length === 0) {
+        listEl.innerHTML =
+          reviewFilter === 'pending'
+            ? '<p class="subtitle" style="margin-top: 14px;">目前沒有卡關未過關的題目！可切到「全部紀錄」查看已過關題目。</p>'
+            : '<p class="subtitle" style="margin-top: 14px;">目前還沒有錯題紀錄，去「拍考卷列題目重寫」拍下錯題吧！</p>';
+        return;
+      }
+
+      listEl.innerHTML = visibleItems
+        .map(
+          (item) => `
+          <div class="mistake-item">
+            <div class="mistake-meta">
+              <span class="badge ${item.mastered ? 'ok' : ''}">
+                ${item.mastered ? '已過關' : `不放過・錯 ${item.wrongCount} 次`}
+              </span>
+              ${escapeHtml(item.version)}・${escapeHtml(item.subject)}・${escapeHtml(item.lastWrongAt)}
+            </div>
+            <div style="font-weight: 700; margin-bottom: 6px; white-space: pre-wrap;">${escapeHtml(item.question)}</div>
+            ${
+              item.photo
+                ? `<img src="${item.photo}" alt="考卷錯題照片" style="max-height: 180px; border-radius: 10px; margin-bottom: 8px; display: block;" />`
+                : ''
+            }
+            <div style="font-size: 0.92rem; color: #334155;">
+              上次作答：${escapeHtml(item.userAnswer || '未填')}｜正答：<strong>${escapeHtml(item.correctAnswer || '待對課本／習作')}</strong>｜錯因：${escapeHtml(item.parentNote)}
+            </div>
+            <div class="action-bar">
+              <button class="btn-success" onclick="markMastered(${item.id})">
+                ${item.mastered ? '重寫又錯了！拉回不放過' : '重寫答對了！准予過關'}
+              </button>
+              <button class="btn-secondary" onclick="deleteMistake(${item.id})">刪除</button>
+            </div>
+          </div>
+        `
+        )
+        .join('');
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function escapeAttr(str) {
+      return String(str || '').replace(/"/g, '&quot;');
+    }
+
+    initSavedKey();
+    syncQuestionCards();
+    renderMistakes();
+  </script>
+</body>
+</html>
