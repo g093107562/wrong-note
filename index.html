@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>錯題重練小工具｜拍錯題直接作答與錯題本記憶</title>
+  <title>錯題不放過小工具｜拍考卷揪錯、重寫過關</title>
   <style>
     /* =========================================================
-       樣式區（等下要改顏色、圓角、按鈕、卡片間距，直接改這裡）
+       樣式區（換顏色、圓角、按鈕、卡片間距，直接改這裡最快）
        ========================================================= */
     :root {
       --bg: #f4f7fb;
@@ -68,8 +68,9 @@
       display: inline-block;
       font-size: 0.78rem;
       font-weight: 700;
-      color: var(--primary);
-      background: var(--primary-soft);
+      color: var(--danger);
+      background: var(--danger-soft);
+      border: 1px solid var(--danger-border);
       padding: 3px 10px;
       border-radius: 999px;
       margin-bottom: 6px;
@@ -101,7 +102,7 @@
       font-size: 0.98rem;
       font-weight: 700;
       cursor: pointer;
-      transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease;
+      transition: transform 0.12s ease, background-color 0.15s ease;
     }
 
     button:active {
@@ -336,13 +337,12 @@
 </head>
 <body>
   <div class="app">
-    <!-- 頂部主控列 -->
     <div class="card">
       <div class="header-top">
         <div>
-          <span class="brand-tag">錯題重練小工具</span>
-          <h1>拍錯題直接作答＋錯題本記憶</h1>
-          <p class="subtitle">拍完照直接填答案批改，做錯自動進錯題本，考前只練還沒熟的題目</p>
+          <span class="brand-tag">錯題不放過・重寫過關</span>
+          <h1>拍考卷揪錯 → 重寫對了才過關</h1>
+          <p class="subtitle">先拍考卷、對課本／習作揪出錯在哪，再讓孩子重新寫一次，對了過關、錯了不放過</p>
         </div>
         <select id="versionSelect" style="width: auto; min-width: 140px;">
           <option value="康軒">康軒版</option>
@@ -354,19 +354,18 @@
 
       <div class="mode-tabs">
         <button id="tabPractice" class="btn-secondary active" onclick="switchTab('practice')">
-          拍錯題作答
+          1. 拍考卷／重寫測驗
         </button>
         <button id="tabReview" class="btn-secondary" onclick="switchTab('review')">
-          錯題本 (<span id="wrongCount">0</span>)
+          2. 不放過錯題本 (<span id="wrongCount">0</span>)
         </button>
       </div>
     </div>
 
-    <!-- 模式一：拍錯題直接作答 -->
     <div id="practiceSection" class="card">
       <div class="row-3">
         <div class="field-group">
-          <label for="subjectSelect">1. 選科目</label>
+          <label for="subjectSelect">科目</label>
           <select id="subjectSelect">
             <option value="數學">數學</option>
             <option value="國語">國語</option>
@@ -377,21 +376,21 @@
         </div>
 
         <div class="field-group">
-          <label for="batchCount">2. 這次記幾題</label>
+          <label for="batchCount">這批幾題</label>
           <input id="batchCount" type="number" min="1" max="20" value="1" />
         </div>
 
         <div class="field-group">
-          <label>3. 拍／選題目照片</label>
+          <label>拍考卷／選照片</label>
           <div class="photo-actions">
             <button type="button" class="btn-primary" onclick="triggerCameraCapture()">
-              直接拍照
+              拍考卷
             </button>
             <button type="button" class="btn-secondary" onclick="triggerGalleryPick()">
               選相簿多張
             </button>
           </div>
-          <div id="photoFileName" class="photo-tip">尚未加入照片（可拍多張或從相簿挑多張）</div>
+          <div id="photoFileName" class="photo-tip">尚未加入考卷照片（可拍多張或從相簿挑多張）</div>
 
           <input
             id="cameraInput"
@@ -415,54 +414,53 @@
       <div id="photoGrid" class="photo-grid"></div>
 
       <div class="field-group" style="margin-top: 12px;">
-        <label for="questionText">題號或簡記（可留白，系統會自動編號）</label>
+        <label for="questionText">題號或課本／習作對照位置（可留白自動編號）</label>
         <textarea
           id="questionText"
-          placeholder="可留白自動編第 1 題、第 2 題... 或一行一題寫題號／重點"
+          placeholder="例如：第3題（對照課本第64頁、習作第46頁）或留白自動編第 1 題..."
         ></textarea>
       </div>
 
       <div class="field-group">
-        <label>作答內容（可點 A/B/C/D 快速填入，多題用逗號隔開，如：A, C）</label>
+        <label>重寫作答（點 A/B/C/D 快速填入，多題用逗號隔開，如：A, C）</label>
         <div class="choices">
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'A')">+ A</button>
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'B')">+ B</button>
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'C')">+ C</button>
           <button type="button" class="choice-btn" onclick="appendChoice('userAnswer', 'D')">+ D</button>
         </div>
-        <input id="userAnswer" type="text" style="margin-top: 10px;" placeholder="輸入作答（例如：B 或 A, C, D）" />
+        <input id="userAnswer" type="text" style="margin-top: 10px;" placeholder="輸入重寫答案（例如：B 或 A, C, D）" />
       </div>
 
       <div class="row-2">
         <div class="field-group">
-          <label for="correctAnswer">正確答案（留白可直接當錯題存檔）</label>
+          <label for="correctAnswer">課本／習作正確答案</label>
           <input id="correctAnswer" type="text" placeholder="例如：C 或 C, B, D" />
         </div>
         <div class="field-group">
-          <label for="parentNote">錯因提醒／解析備註</label>
-          <input id="parentNote" type="text" placeholder="例如：單位沒換算、看錯題目條件" />
+          <label for="parentNote">揪出來的錯因（哪裡寫錯、觀念卡在哪）</label>
+          <input id="parentNote" type="text" placeholder="例如：把「進」跟「近」搞混、算式少寫一步" />
         </div>
       </div>
 
       <div class="action-bar">
-        <button class="btn-primary" onclick="submitBatchAnswer()">送出作答（答錯自動存錯題本）</button>
-        <button class="btn-danger-soft" onclick="saveBatchMistakesDirect()">直接存進錯題本</button>
+        <button class="btn-primary" onclick="submitBatchAnswer()">送出重寫（對了過關／錯了不放過）</button>
+        <button class="btn-danger-soft" onclick="saveBatchMistakesDirect()">直接放進「不放過錯題本」</button>
         <button class="btn-secondary" onclick="clearForm()">清空重填</button>
       </div>
 
       <div id="feedbackBox" class="feedback"></div>
     </div>
 
-    <!-- 模式二：錯題本記憶與重練 -->
     <div id="reviewSection" class="card hidden">
       <div class="header-top">
         <div>
-          <h2 style="margin: 0; font-size: 1.15rem;">錯題本記憶清單</h2>
-          <p class="subtitle">只練還沒熟的題目，答對可移出待複習</p>
+          <h2 style="margin: 0; font-size: 1.15rem;">不放過錯題本</h2>
+          <p class="subtitle">沒過關的會一直留在這裡，重寫答對才算過關</p>
         </div>
         <div class="action-bar" style="margin-top: 0;">
           <button id="filterPendingBtn" class="btn-secondary active" onclick="setReviewFilter('pending')">
-            只看待複習
+            尚未過關
           </button>
           <button id="filterAllBtn" class="btn-secondary" onclick="setReviewFilter('all')">
             全部紀錄
@@ -474,16 +472,15 @@
       <div id="mistakeList"></div>
     </div>
 
-    <!-- 流量承接區（敲碗／方案引導，方便你改成自己的連結或文案） -->
     <div class="card cta-box">
       <p class="footer-note" style="margin: 0 0 10px;">
-        <strong>想要更多年級／版本，或每週有人幫整理錯題重練？</strong>
+        <strong>想要更多年級／科目版本，或每週有人幫整理錯題重寫清單？</strong>
       </p>
       <div class="action-bar" style="margin-top: 0;">
         <button class="btn-secondary" onclick="alert('歡迎留言告訴我們想加哪個年級、科目或課本版本！')">
           敲碗許願缺的版本
         </button>
-        <button class="btn-success" onclick="alert('想了解每週整理錯題重練＋解析方案，歡迎聯繫洽詢！')">
+        <button class="btn-success" onclick="alert('想了解每週整理錯題重寫＋解析方案，歡迎聯繫洽詢！')">
           了解每週代整理方案
         </button>
       </div>
@@ -491,7 +488,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'wrong_note_flow_v1';
+    const STORAGE_KEY = 'wrong_note_no_mercy_v1';
     let currentPhotos = [];
     let reviewFilter = 'pending';
 
@@ -581,7 +578,7 @@
         try {
           const dataUrl = await compressImageFile(file);
           currentPhotos.push({
-            name: file.name || `照片_${currentPhotos.length + 1}`,
+            name: file.name || `考卷_${currentPhotos.length + 1}`,
             data: dataUrl
           });
           added += 1;
@@ -593,7 +590,7 @@
       renderPhotoGrid();
       tipEl.textContent =
         added > 0
-          ? `已加入 ${currentPhotos.length} 張照片（可繼續拍或選圖）`
+          ? `已加入 ${currentPhotos.length} 張考卷照片（可繼續拍或選圖）`
           : '照片載入失敗，請改用「選相簿多張」或用瀏覽器開啟再試一次。';
     }
 
@@ -602,8 +599,8 @@
       renderPhotoGrid();
       document.getElementById('photoFileName').textContent =
         currentPhotos.length > 0
-          ? `已加入 ${currentPhotos.length} 張照片`
-          : '尚未加入照片（可拍多張或從相簿挑多張）';
+          ? `已加入 ${currentPhotos.length} 張考卷照片`
+          : '尚未加入考卷照片（可拍多張或從相簿挑多張）';
     }
 
     function renderPhotoGrid() {
@@ -617,7 +614,7 @@
         .map(
           (p, idx) => `
           <div class="photo-thumb-card">
-            <img src="${p.data}" alt="題目照片 ${idx + 1}" />
+            <img src="${p.data}" alt="考卷照片 ${idx + 1}" />
             <button type="button" class="remove-photo-btn" onclick="removePhoto(${idx})">移除第 ${idx + 1} 張</button>
           </div>
         `
@@ -661,7 +658,7 @@
         const qTitle =
           rawLines[i] ||
           (photoUrls.length > 0
-            ? `第 ${i + 1} 題（對照第 ${Math.min(i + 1, photoUrls.length)} 張照片）`
+            ? `第 ${i + 1} 題（對照第 ${Math.min(i + 1, photoUrls.length)} 張考卷）`
             : `第 ${i + 1} 題`);
 
         batch.push({
@@ -695,7 +692,7 @@
           question: entry.question,
           userAnswer: entry.userAnswer,
           correctAnswer: entry.correctAnswer,
-          parentNote: parentNote || '對照題目條件與課本觀念再檢查一次。',
+          parentNote: parentNote || '對照課本與習作找出錯因，再重寫一次。',
           photo: entry.photo || '',
           wrongCount: 1,
           lastWrongAt: new Date().toLocaleString('zh-TW'),
@@ -713,42 +710,42 @@
 
       if (currentPhotos.length === 0 && !document.getElementById('questionText').value.trim()) {
         feedback.className = 'feedback wrong';
-        feedback.innerHTML = '請先拍／選照片，或輸入題號／作答內容再送出。';
+        feedback.innerHTML = '請先拍考卷／選照片，或輸入題號／重寫答案再送出。';
         return;
       }
 
       const items = loadMistakes();
-      let rightCount = 0;
-      let wrongCountBatch = 0;
+      let passCount = 0;
+      let holdCount = 0;
       const detailLines = [];
 
       for (const entry of batch) {
         if (!entry.correctAnswer) {
           upsertMistakeItem(items, version, subject, parentNote, entry);
-          wrongCountBatch += 1;
-          detailLines.push(`• ${escapeHtml(entry.question)}：未填正答，已收進錯題本`);
+          holdCount += 1;
+          detailLines.push(`• ${escapeHtml(entry.question)}：未填正答，先留著不放過`);
           continue;
         }
 
         const isRight = entry.userAnswer.toLowerCase() === entry.correctAnswer.toLowerCase();
         if (isRight) {
-          rightCount += 1;
-          detailLines.push(`• ${escapeHtml(entry.question)}：答對（${escapeHtml(entry.userAnswer)}）`);
+          passCount += 1;
+          detailLines.push(`• ${escapeHtml(entry.question)}：重寫答對（${escapeHtml(entry.userAnswer)}）→ 過關！`);
         } else {
           upsertMistakeItem(items, version, subject, parentNote, entry);
-          wrongCountBatch += 1;
+          holdCount += 1;
           detailLines.push(
-            `• ${escapeHtml(entry.question)}：作答「${escapeHtml(entry.userAnswer || '未填')}」／正答「<strong>${escapeHtml(entry.correctAnswer)}</strong>」→ 已收進錯題本`
+            `• ${escapeHtml(entry.question)}：重寫「${escapeHtml(entry.userAnswer || '未填')}」／正答「<strong>${escapeHtml(entry.correctAnswer)}</strong>」→ 錯了不放過，已留錯題本`
           );
         }
       }
 
       if (!saveMistakes(items)) return;
 
-      feedback.className = wrongCountBatch > 0 ? 'feedback wrong' : 'feedback right';
+      feedback.className = holdCount > 0 ? 'feedback wrong' : 'feedback right';
       feedback.innerHTML = `
-        <strong>完成！共 ${batch.length} 題：答對 ${rightCount} 題、收進錯題本 ${wrongCountBatch} 題。</strong><br>
-        ${parentNote ? `備註：${escapeHtml(parentNote)}<br>` : ''}
+        <strong>重寫結果：共 ${batch.length} 題，過關 ${passCount} 題、不放過 ${holdCount} 題。</strong><br>
+        ${parentNote ? `錯因提醒：${escapeHtml(parentNote)}<br>` : ''}
         <div style="margin-top: 8px; font-size: 0.92rem;">${detailLines.join('<br>')}</div>
       `;
     }
@@ -762,7 +759,7 @@
 
       if (currentPhotos.length === 0 && !document.getElementById('questionText').value.trim()) {
         feedback.className = 'feedback wrong';
-        feedback.innerHTML = '請先拍／選照片，或輸入題號／作答內容再存進錯題本。';
+        feedback.innerHTML = '請先拍考卷／選照片，或輸入題號再放進不放過錯題本。';
         return;
       }
 
@@ -774,7 +771,7 @@
       if (!saveMistakes(items)) return;
 
       feedback.className = 'feedback wrong';
-      feedback.innerHTML = `<strong>已將 ${batch.length} 題直接存進錯題本！</strong> 切到上方「錯題本」即可重練。`;
+      feedback.innerHTML = `<strong>已將 ${batch.length} 題放進「不放過錯題本」！</strong> 切到上方錯題本讓孩子重寫，對了才過關。`;
     }
 
     function markMastered(id) {
@@ -801,7 +798,7 @@
       document.getElementById('parentNote').value = '';
       document.getElementById('cameraInput').value = '';
       document.getElementById('galleryInput').value = '';
-      document.getElementById('photoFileName').textContent = '尚未加入照片（可拍多張或從相簿挑多張）';
+      document.getElementById('photoFileName').textContent = '尚未加入考卷照片（可拍多張或從相簿挑多張）';
       document.getElementById('feedbackBox').className = 'feedback';
       currentPhotos = [];
       renderPhotoGrid();
@@ -820,8 +817,8 @@
       if (visibleItems.length === 0) {
         listEl.innerHTML =
           reviewFilter === 'pending'
-            ? '<p class="subtitle" style="margin-top: 14px;">目前沒有待複習錯題！可以切到「全部紀錄」查看已掌握題目，或回「拍錯題作答」新增。</p>'
-            : '<p class="subtitle" style="margin-top: 14px;">目前還沒有錯題紀錄，去「拍錯題作答」新增第一批吧！</p>';
+            ? '<p class="subtitle" style="margin-top: 14px;">目前沒有卡關未過關的題目！可切到「全部紀錄」查看已過關題目，或回「拍考卷／重寫測驗」新增。</p>'
+            : '<p class="subtitle" style="margin-top: 14px;">目前還沒有錯題紀錄，去「拍考卷／重寫測驗」拍下錯題吧！</p>';
         return;
       }
 
@@ -831,22 +828,22 @@
           <div class="mistake-item">
             <div class="mistake-meta">
               <span class="badge ${item.mastered ? 'ok' : ''}">
-                ${item.mastered ? '已掌握' : `錯 ${item.wrongCount} 次`}
+                ${item.mastered ? '已過關' : `不放過・錯 ${item.wrongCount} 次`}
               </span>
               ${escapeHtml(item.version)}・${escapeHtml(item.subject)}・${escapeHtml(item.lastWrongAt)}
             </div>
             <div style="font-weight: 700; margin-bottom: 6px;">${escapeHtml(item.question)}</div>
             ${
               item.photo
-                ? `<img src="${item.photo}" alt="錯題照片" style="max-height: 180px; border-radius: 10px; margin-bottom: 8px; display: block;" />`
+                ? `<img src="${item.photo}" alt="考卷錯題照片" style="max-height: 180px; border-radius: 10px; margin-bottom: 8px; display: block;" />`
                 : ''
             }
             <div style="font-size: 0.92rem; color: #334155;">
-              作答：${escapeHtml(item.userAnswer || '未填')}｜正答：<strong>${escapeHtml(item.correctAnswer || '待補充')}</strong>｜備註：${escapeHtml(item.parentNote)}
+              上次作答：${escapeHtml(item.userAnswer || '未填')}｜正答：<strong>${escapeHtml(item.correctAnswer || '待對課本／習作')}</strong>｜錯因：${escapeHtml(item.parentNote)}
             </div>
             <div class="action-bar">
               <button class="btn-success" onclick="markMastered(${item.id})">
-                ${item.mastered ? '改回待複習' : '答對了！移出待複習'}
+                ${item.mastered ? '重寫又錯了！拉回不放過' : '重寫答對了！准予過關'}
               </button>
               <button class="btn-secondary" onclick="deleteMistake(${item.id})">刪除</button>
             </div>
